@@ -23,7 +23,7 @@ class TtgSensor
 class TtgSensorsList
 {
   public:
-    boolean hasSensors();
+    boolean hasMembers();
     void add(TtgSensor *t_value);
     boolean messWerte();
     boolean checkReporting(int t_reportTime);

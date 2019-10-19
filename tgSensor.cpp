@@ -14,7 +14,7 @@ void TtgSensor::messWert()
   messTime = millis();
 }
 
-boolean TtgSensorsList::hasSensors()
+boolean TtgSensorsList::hasMembers()
 {
   return firstelement != NULL;
 }
@@ -48,7 +48,7 @@ boolean TtgSensorsList::checkReporting(int t_reportTime)
 {
     boolean needReporting = false;
     int now = millis();
-    
+
     for (TtgSensor *element = firstelement; element != NULL; element = element->next)
       if (((now - element->reportTime) /1000 > t_reportTime) or (now - element->reportTime < 0))
         {

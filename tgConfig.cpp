@@ -16,9 +16,9 @@ TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int a
 /**
  * constructor
  */
-TtgDeviceConfig::TtgDeviceConfig(const String& aDeviceVersion)
+TtgDeviceConfig::TtgDeviceConfig(const String& t_deviceversion)
 {
-  deviceVersion = aDeviceVersion;
+  deviceversion = t_deviceversion;
 }
 
 void TtgDeviceConfig::addConfig(const String& aFieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, String* aps, int* api, float* apf)
@@ -181,9 +181,9 @@ void TtgDeviceConfig::readEEPROM()
 
   boolean valid = true;
   unsigned int i=0;
-  for (int j=0; j<sizeof(deviceVersion); j++)
+  for (int j=0; j<sizeof(deviceversion); j++)
     {
-      if (EEPROM.read(configStart + i) != deviceVersion[j])
+      if (EEPROM.read(configStart + i) != deviceversion[j])
         {
           valid = false;
           break;
@@ -225,9 +225,9 @@ void TtgDeviceConfig::writeEEPROM()
   //for (unsigned int i=0; i<sizeof(configs); i++)
   //  EEPROM.write(configStart + i, *((char*)&configs + i));
   unsigned int i=0;
-  for(unsigned int j=0; j<sizeof(deviceVersion); j++)
+  for(unsigned int j=0; j<sizeof(deviceversion); j++)
     {
-      EEPROM.write(configStart + i, deviceVersion[j]);
+      EEPROM.write(configStart + i, deviceversion[j]);
       i++;
     }
   for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)

@@ -24,7 +24,7 @@ class TtgConfConfig
 class TtgDeviceConfig
 {
   public:
-    TtgDeviceConfig(const String& aDeviceVersion);
+    TtgDeviceConfig(const String& t_deviceversion);
     void addConfig(const String& aFieldname, const String& aTyp, const int aGroesse, const boolean aSecure, const String& aDescription, String* aps, int* api, float* apf);
     void setValue(const String& fieldname, const String& value);
     String getValue(const String& fieldname);
@@ -38,7 +38,7 @@ class TtgDeviceConfig
     String getHtmlForm();
   protected:
   private:
-    String deviceVersion;  //MAX 7 Zeichen
+    String deviceversion;  //MAX 7 Zeichen
     TtgConfConfig *firstelement = NULL, *lastelement = NULL;
     TtgConfConfig* getFieldElement(const String& fieldname);
 };

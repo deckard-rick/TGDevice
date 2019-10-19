@@ -1,9 +1,36 @@
+/**
+*  Projekt TGDevice (Baseclasses/Framework for Arduino ESP8622 devices)
+*
+*  Motivation
+*  There are no results by loking for base classes (or a framework) to
+*  easy implement IoT-Devices with sensors and actors with an
+*  ESP8622 (NodeMCU) with Arduino.
+*  All examples/systems founds are not object orientated, therefor is
+*  many copy and paste needed by implementing more than one device and/or
+*  they are connected to special servers via special protocolls
+*  In most cases the homeserver do all the managment/controlling of they
+*  the devices. The better way is, that there is decentalized knowledge
+*  in each device. Therefore I dont want to use a homeserver system,
+*  (sondern) implementing my own small web based dashboard.
+*  Web-Server and devices are connectd via http in json.
+*
+*  Design
+*  TGDevice main class implemented a base devices including http-server
+            for configuration and working with the device
+*  TGConfig automated Handling og configuraion parameters
+*  TGSensor baseclass to mesassure Values
+*  TGActor  baseclass to controll/switch on/off sometging, included timer
+*
+*  Copyright Andreas Tengicki 2018, Germany, 64347 Griesheim (tgdevice@tengicki.de)
+*  Licence (richtige suchen, NO COMMERCIAÖ USE)
+*/
+
 #ifndef TGDEVICE_H
 #define TGDEVICE_H
 
-#include <tgConfig.hpp>
-#include <tgSensor.hpp>
-#include <tgActor.hpp>
+#include <TGConfig.hpp>
+#include <TGSensor.hpp>
+#include <TGActor.hpp>
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -12,19 +39,28 @@
 
 #define NOVAL -9999
 
-class TtgDevice
+/**
+* class TGDevice
+*
+* Main CLass implements a (base) device, includes
+* * configuration
+* * get values from sensors
+* * set actors
+* * automated dashboard/menu via http on the device
+*/
+class TGDevice
 {
   public:
-    TtgDevice(const String& aDeviceVersion);
+    TGDevice(const String& aDeviceVersion);
     void writelog(const String& s, boolean crLF=true);
-    void deviceSetup();
     void registerSensors(TtgSensorsList* t_sensors);
     void registerActors(TtgActorsList* t_actor);
+    void deviceSetup();
     virtual void doCalcStatus();
     boolean httpRequest(const String& url, const String& values, const boolean t_withresponse, String& response);
     void deviceLoop();
   protected:
-    TtgDeviceConfig *deviceConfig;
+    TtgDeviceConfig *deviceconfig;
     virtual void doHello();
     void setTimerActive(boolean value=true);
     virtual void doRegister();
@@ -35,7 +71,7 @@ class TtgDevice
     TtgSensorsList *sensors = NULL;
     TtgActorsList *actors = NULL;
   private:
-    String deviceVersion;
+    String deviceversion;
     String logModus = "S"; //"":nix "S":serial "<ip:port>"für Debugging via Netzwerk (später)
     String deviceID, wifiSSID, wifiPWD, host;
     ESP8266WebServer *server = new ESP8266WebServer(80);
