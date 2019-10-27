@@ -1,6 +1,11 @@
-#include <tgCOnfig.hpp>
+#include <tgConfig.hpp>
 
-TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, String *aps, int *api, float *apf)
+void debug(const String& s)
+{
+  Serial.println(s);
+}
+
+TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, char *aps, int *api, float *apf)
 {
   fieldname = aFieldname;
   typ = aTyp;
@@ -9,7 +14,7 @@ TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int a
   description = aDescription;
   psval = aps;
   pival = api;
-  pdval = apf;
+  pfval = apf;
   next = NULL;
 }
 
@@ -21,18 +26,23 @@ TtgDeviceConfig::TtgDeviceConfig(const String& t_deviceversion)
   deviceversion = t_deviceversion;
 }
 
-void TtgDeviceConfig::addConfig(const String& aFieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, String* aps, int* api, float* apf)
+void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, char *aps, int* api, float* apf)
 {
   //Bei doppelten Namen bekommen wir Probleme, die wir dadurch lösen könnten, das wir beim
   //* get den ersten nehmen
   //* beim Set alle setzen
   //* beim read/write darauf achten
+  //writelog("addConfig:"+aFieldname);
   //Aber wir hoffen/probiern erstmal mit eindeutigen Namen zurecht zu kommen
-  TtgConfConfig* testElement = getFieldElement(aFieldname);
+/*
+  TtgConfConfig* testElement = getFieldElement(t_fieldname);
   if (testElement != NULL)
-    return; //TGMARK besser raise eine Exception (wie geht das in C++ ?)
+    {
+       debug("git es schon:"+testElement->fieldname);
+       return; //TGMARK besser raise eine Exception (wie geht das in C++ ?)
+    }
 
-  TtgConfConfig *newElement = new TtgConfConfig(aFieldname, aTyp, aGroesse, aSecure, aDescription, aps, api, apf);
+  TtgConfConfig *newElement = new TtgConfConfig(t_fieldname, aTyp, aGroesse, aSecure, aDescription, aps, api, apf);
   if (firstelement == NULL)
     {
       firstelement = newElement;
@@ -43,13 +53,14 @@ void TtgDeviceConfig::addConfig(const String& aFieldname, const String& aTyp, in
       lastelement->next = newElement;
       lastelement = lastelement->next;
     }
+*/    
 }
 
 TtgConfConfig* TtgDeviceConfig::getFieldElement(const String& fieldname)
 {
   TtgConfConfig *erg = NULL;
-  for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
-    if (i->fieldname = fieldname)
+  for (TtgConfConfig* i = firstelement; i != NULL; i=i->next)
+    if (i->fieldname == fieldname)
       {
         erg = i;
         break;
@@ -63,11 +74,12 @@ String TtgDeviceConfig::getValue(const String& fieldname)
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
     if (i->typ == "S")
-      erg = *(i->psval);
+      erg = String(i->psval);
     else if (i->typ == "I")
       erg = String(*(i->pival));
-    else if (i->typ == "D")
-      erg = String(*(i->pdval));
+    else if (i->typ == "F")
+      erg = String(*(i->pfval));
+  debug ("configGetValue("+fieldname+"):"+erg);
   return erg;
 }
 
@@ -88,8 +100,8 @@ float TtgDeviceConfig::getValueD(const String& fieldname)
   float erg = 0;
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
-    if (i->typ == "D")
-      erg = *(i->pdval);
+    if (i->typ == "F")
+      erg = *(i->pfval);
     else
       erg = getValue(fieldname).toFloat();
   return erg;
@@ -97,14 +109,15 @@ float TtgDeviceConfig::getValueD(const String& fieldname)
 
 void TtgDeviceConfig::setValue(const String& fieldname, const String& value)
 {
+  debug ("setValue("+fieldname+"):"+value);
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
     if (i->typ == "S")
-      *(i->psval) = value.substring(0,i->groesse);
+      value.toCharArray(i->psval,i->groesse);
     else if (i->typ == "I")
       *(i->pival) = value.toInt();
-    else if (i->typ == "D")
-      *(i->pdval) = value.toFloat();
+    else if (i->typ == "F")
+      *(i->pfval) = value.toFloat();
 }
 
 String TtgDeviceConfig::getJson(boolean all)
@@ -136,7 +149,7 @@ void TtgDeviceConfig::putJson(const String& json)
   int modus = 0;
   String fieldname = "";
   String fieldvalue = "";
-  for (int i=0; i<sizeof(json); i++)
+  for (int i=0; i < json.length(); i++)
     {
       char c = json[i];
       if ((modus == 0) and (c == '{')) modus = 1;
@@ -167,21 +180,22 @@ int TtgDeviceConfig::getEEPROMSize()
       erg += i->groesse;
     else if (i->typ == "I")
       erg += sizeof(int);
-    else if (i->typ == "D")
+    else if (i->typ == "F")
       erg += sizeof(float);
     else
       ;
+  debug("EEPROM-Size:"+String(erg));
   return erg;
 }
 
 //https://playground.arduino.cc/Code/EEPROMLoadAndSaveSettings
 void TtgDeviceConfig::readEEPROM()
 {
-  //writelog("load Config");
+  debug("load Config");
 
   boolean valid = true;
   unsigned int i=0;
-  for (int j=0; j<sizeof(deviceversion); j++)
+  for (int j=0; j < deviceversion.length(); j++)
     {
       if (EEPROM.read(configStart + i) != deviceversion[j])
         {
@@ -195,37 +209,40 @@ void TtgDeviceConfig::readEEPROM()
       //for (unsigned int i=0; i<sizeof(configs); i++)
       //  *((char*)&configs + i) = EEPROM.read(configStart + i);
       for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)
-        if (elem->typ == "S")
-          for(unsigned int j=0; j<elem->groesse; j++)
-            {
-              //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
-              //Und wenn ich für den String nicht genug Platz habe, dann scheppert es auch!!
-              *(elem->psval + j) = EEPROM.read(configStart + i);
-              i++;
-            }
-        else if (elem->typ == "I")
-          for(unsigned int j=0; j<sizeof(int); j++)
-            {
-              *((char*)elem->pival + j) = EEPROM.read(configStart + i);
-              i++;
-            }
-        else if (elem->typ == "D")
-          for(unsigned int j=0; j<sizeof(float); j++)
-            {
-              *((char*)elem->pival + j) = EEPROM.read(configStart + i);
-              i++;
-            }
+        {
+          if (elem->typ == "S")
+            for(unsigned int j=0; j<elem->groesse; j++)
+              {
+                //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
+                //Und wenn ich für den String nicht genug Platz habe, dann scheppert es auch!!
+                elem->psval[j] = EEPROM.read(configStart + i);
+                i++;
+              }
+          else if (elem->typ == "I")
+            for(unsigned int j=0; j<sizeof(int); j++)
+              {
+                *((char*)(elem->pival + j)) = EEPROM.read(configStart + i);
+                i++;
+              }
+          else if (elem->typ == "F")
+            for(unsigned int j=0; j<sizeof(float); j++)
+              {
+                *((char*)(elem->pfval + j)) = EEPROM.read(configStart + i);
+                i++;
+              }
+          debug("readEEPROM:"+elem->fieldname+" => "+getValue(elem->fieldname));
+        }
     }
 }
 
 void TtgDeviceConfig::writeEEPROM()
 {
-  //writelog("write Config");
+  debug("write Config");
 
   //for (unsigned int i=0; i<sizeof(configs); i++)
   //  EEPROM.write(configStart + i, *((char*)&configs + i));
   unsigned int i=0;
-  for(unsigned int j=0; j<sizeof(deviceversion); j++)
+  for(unsigned int j=0; j < deviceversion.length(); j++)
     {
       EEPROM.write(configStart + i, deviceversion[j]);
       i++;
@@ -234,19 +251,19 @@ void TtgDeviceConfig::writeEEPROM()
     if (elem->typ == "S")
       for(unsigned int j=0; j<elem->groesse; j++)
         { //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
-          EEPROM.write(configStart + i, (*elem->psval)[j]);
+          EEPROM.write(configStart + i, elem->psval[j]) ;
           i++;
         }
     else if (elem->typ == "I")
       for(unsigned int j=0; j<sizeof(int); j++)
         {
-          EEPROM.write(configStart + i, *((char*)elem->pival + j));
+          EEPROM.write(configStart + i, *((char*)(elem->pival + j)));
           i++;
         }
-    else if (elem->typ == "D")
+    else if (elem->typ == "F")
       for(unsigned int j=0; j<sizeof(float); j++)
         {
-          EEPROM.write(configStart + i, *((char*)elem->pival + j));
+          EEPROM.write(configStart + i, *((char*)(elem->pfval + j)));
           i++;
         }
   EEPROM.commit();

@@ -57,7 +57,8 @@ class TGDevice
     void registerActors(TtgActorsList* t_actor);
     void deviceSetup();
     virtual void doCalcStatus();
-    boolean httpRequest(const String& url, const String& values, const boolean t_withresponse, String& response);
+    void onDashboard();
+    boolean httpRequest(const char* url, const String& values, const boolean t_withresponse, String& response);
     void deviceLoop();
   protected:
     TtgDeviceConfig *deviceconfig;
@@ -70,11 +71,11 @@ class TGDevice
     int maintime = 0;   //[s]  Wir schalten im Garten unabhängig vom Wochentag, d.h. Verwaltung von 00:00:00 bis 23:59:59 reicht, also 0 bis 86399 Sekunden reicht.
     TtgSensorsList *sensors = NULL;
     TtgActorsList *actors = NULL;
+    char deviceID[16], wifiSSID[16], wifiPWD[32], host[32];
   private:
     String deviceversion;
     String logModus = "S"; //"":nix "S":serial "<ip:port>"für Debugging via Netzwerk (später)
-    String deviceID, wifiSSID, wifiPWD, host;
-    ESP8266WebServer *server = new ESP8266WebServer(80);
+    //ESP8266WebServer *server = NULL;
     boolean timerActive = false;
     int lastTimeMS = -1;
     int mainTimeMS = 0; //[ms] damit die Weiterschaltung in ms funnktioniert, aber
@@ -84,15 +85,14 @@ class TGDevice
     int actorTime = 5; //[s]
     int lastMessTime = -1, lastActorTime = -1;
     int loopDelayMS = 50; //[ms] Wie lange der Loop pausiert am Ende
-    String urlgettimesec;
-    String urlsensordata;
-    String urlactordata;
+    char urlgettimesec[32] = {'\0'};
+    char urlsensordata[32] = {'\0'};
+    char urlactordata[32] = {'\0'};
     String htmlHeader();
     String htmlFooter();
     String jsonHeader();
     String getValuesJson(const boolean t_angefordert);
     String getActorsJson(const boolean t_angefordert);
-    void serverOnDashboard();
     String getHtmlConfig();
     void serverOnConfig();
     void serverOnSaveConfig();

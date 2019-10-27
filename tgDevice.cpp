@@ -24,6 +24,23 @@ boolean timeTest(int checkTime, int sec)
   return (((ms - checkTime) / 1000) > sec) || ((ms - checkTime) < 0);
 }
 
+ESP8266WebServer server(IPAddress(192,168,12,32),80);
+
+TGDevice *myDevice = NULL;
+
+void serverOnDashboard()
+{
+  String html = "<html><body>"
+        "<h2>Menu</h2>"
+        "<p>[<a href=\"/config\">Konfiguration</a>] "
+        "[<a href=\"/getconfig\">Konfiguration (json)</a>] "
+        "[<a href=\"/getvalues\">Werte (json)</a>] "
+        "[<a href=\"/getactors\">Aktoren (json)</a></p>"
+        "</body></html>";
+
+  server.send(200, "text/html", html);
+}
+
 /**
 * TGDevice constructor
 * param const String& t_deviceversion Version of the devices
@@ -36,6 +53,7 @@ TGDevice::TGDevice(const String& t_deviceversion)
 {
   deviceversion = t_deviceversion;
   deviceconfig = new TtgDeviceConfig(t_deviceversion);
+  myDevice = this;
 }
 
 /**
@@ -91,24 +109,33 @@ void TGDevice::deviceSetup()
   if (logModus == "S")
     Serial.begin(9600);
 
+  writelog("wait 10s");
+  delay(10000);
+
   //derived classes can print a hello message after boot to logging
+  writelog("doHello");
   doHello();
 
   //register all config-parameter, sensors and actors with derived classe
+  writelog("doRegister");
   doRegister();
 
   //initialize EEPROM for read/write configuration for using after reboot
-  writelog("init EEPROM");
-  EEPROM.begin(deviceconfig->getEEPROMSize());
+  //writelog("init EEPROM");
+  //EEPROM.begin(deviceconfig->getEEPROMSize());
 
   //loas configuration from EEPROM if possible (else default values)
-  writelog("load configuration");
-  deviceconfig->readEEPROM();
+  //writelog("load configuration");
+  //
+  //deviceconfig->readEEPROM();
+
   //calculation in the configuration after changed, for example timetables
+  writelog("doAfterConfigChange");
   doAfterConfigChange();
 
   //establish WiFi connection
-  WiFi.begin(wifiSSID,wifiPWD);
+  writelog("WiFi: "+String(wifiSSID)+" ("+String(wifiPWD)+")");
+  WiFi.begin(String(wifiSSID),String(wifiPWD));
   writelog("<",false);
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -123,26 +150,28 @@ void TGDevice::deviceSetup()
   writelog("init Server");
   //https://stackoverflow.com/questions/32900314/esp8266webserver-setting-a-value-inside-a-class
   //server.on("/data.html", std::bind(&WebServer::handleSomeData, this));
-  server->on("/",std::bind(&TGDevice::serverOnDashboard, this));
-  server->on("/config",std::bind(&TGDevice::serverOnConfig, this));
-  server->on("/saveconfig",std::bind(&TGDevice::serverOnSaveConfig, this));
-  server->on("/writeconfig",std::bind(&TGDevice::serverOnWriteConfig, this));
-  server->on("/getconfig",std::bind(&TGDevice::serverOnGetConfig, this));
-  server->on("/putconfig",std::bind(&TGDevice::serverOnPutConfig, this));
-  if ((sensors != NULL) and sensors->hasMembers())
-    server->on("/getvalues",std::bind(&TGDevice::serverOnGetValues, this));
+  //server.on("/",std::bind(&TGDevice::serverOnDashboard, this));
+  server.on("/",serverOnDashboard);
+  //server.on("/config",std::bind(&TGDevice::serverOnConfig, this));
+  //server.on("/saveconfig",std::bind(&TGDevice::serverOnSaveConfig, this));
+  //server.on("/writeconfig",std::bind(&TGDevice::serverOnWriteConfig, this));
+  //server.on("/getconfig",std::bind(&TGDevice::serverOnGetConfig, this));
+  //server.on("/putconfig",std::bind(&TGDevice::serverOnPutConfig, this));
+  //if ((sensors != NULL) and sensors->hasMembers())
+  //  server.on("/getvalues",std::bind(&TGDevice::serverOnGetValues, this));
   if ((actors != NULL) and actors->hasMembers())
     {
-      server->on("/getactors",std::bind(&TGDevice::serverOnGetActors, this));
-      server->on("/setactor",std::bind(&TGDevice::serverOnSetActor, this));
+      //server.on("/getactors",std::bind(&TGDevice::serverOnGetActors, this));
+      //server.on("/setactor",std::bind(&TGDevice::serverOnSetActor, this));
     }
 
   //do other setup work, for examples http-server here and sensors in derived class
+  writelog("doSetup");
   doSetup();
 
   //start http-Server
   writelog("start http-server");
-  server->begin();
+  server.begin();
 
   //wait a moment
   writelog("wait 250");
@@ -166,29 +195,29 @@ void TGDevice::doHello()
 void TGDevice::doRegister()
 {
   //Default configuration parameter this base device is using
-  deviceconfig->addConfig("deviceID","S",16,false,"Gerätename",&deviceID,NULL,NULL);
-  deviceconfig->addConfig("wifiSSID","S",32,true,"Netzwerkkennung",&wifiSSID,NULL,NULL);
-  deviceconfig->addConfig("wifiPWD","S",32,true,"Netzwerkpasswort",&wifiPWD,NULL,NULL);
-  deviceconfig->addConfig("host","S",32,false,"Host für Konfig, Daten und Dashboard",&host,NULL,NULL);
+  deviceconfig->addConfig("deviceID","S",16,false,"Gerätename",deviceID,NULL,NULL);
+  deviceconfig->addConfig("wifiSSID","S",16,true,"Netzwerkkennung",wifiSSID,NULL,NULL);
+  deviceconfig->addConfig("wifiPWD","S",32,true,"Netzwerkpasswort",wifiPWD,NULL,NULL);
+  deviceconfig->addConfig("host","S",32,false,"Host für Konfig, Daten und Dashboard",host,NULL,NULL);
   deviceconfig->addConfig("loopDelay","I",0,false,"[ms] Pause des Loops",NULL,&loopDelayMS,NULL);
 
   //if timer is active server page which delivers time in secs
   if (timerActive)
-    deviceconfig->addConfig("urlgettimesec","S",32,false,"Webseite von der der Host die aktuellen Sekunden liefert",&urlgettimesec,NULL,NULL);
+    deviceconfig->addConfig("urlgettimesec","S",32,false,"Webseite von der der Host die aktuellen Sekunden liefert",urlgettimesec,NULL,NULL);
 
   //parameter needed for sensors handling is sensors are registered
   if ((sensors != NULL) and sensors->hasMembers())
     {
       deviceconfig->addConfig("messtime","I",0,false,"alle wieviel Sekunden gemessen wird",NULL,&messTime,NULL);
       deviceconfig->addConfig("reporttime","I",0,false,"nach wieviel Sekunden der Wert auch ohne Änderung über Delta reported wird",NULL,&reportTime,NULL);
-      deviceconfig->addConfig("urlsensordata","S",32,false,"Webseite an die die Werte reported werden",&urlsensordata,NULL,NULL);
+      deviceconfig->addConfig("urlsensordata","S",32,false,"Webseite an die die Werte reported werden",urlsensordata,NULL,NULL);
     }
 
   //parameter needed for actors handling is sensors are registered
   if ((actors != NULL) and actors->hasMembers())
     {
       deviceconfig->addConfig("actortime","I",0,false,"Sekunden nach denen auf Auto-Aktion geprüft wird",NULL,&messTime,NULL);
-      deviceconfig->addConfig("urlactordata","S",32,false,"Webseite an die Aktionen reported werden",&urlactordata,NULL,NULL);
+      deviceconfig->addConfig("urlactordata","S",32,false,"Webseite an die Aktionen reported werden",urlactordata,NULL,NULL);
     }
 }
 
@@ -224,8 +253,9 @@ void TGDevice::doSetup()
 */
 String TGDevice::htmlHeader()
 {
-  return "<html><body>"
-         "<h1>Device ID:"+deviceID+" Version("+deviceversion+")</h1>";
+  String html = "<html><body>";
+  //html += "<h1>Device ID:"+String(deviceID)+" Version("+deviceversion+")</h1>";
+  return html;
 }
 
 /**
@@ -234,27 +264,33 @@ String TGDevice::htmlHeader()
 */
 String TGDevice::htmlFooter()
 {
-  return "<p>[<a href=\"/\">Main</a>]</br>"
-         "<small>Copyright Andreas Tengicki 2018-, NO COMMERCIAL USE</small>"
-         "</body></html>";
+  String html = "<p>[<a href=\"/\">Main</a>]</br>";
+  //html += "<small>Copyright Andreas Tengicki 2018-, NO COMMERCIAL USE</small>";
+  html += "</body></html>";
+  return html;
 }
 
-void TGDevice::serverOnDashboard()
+void TGDevice::onDashboard()
 {
-  String html = htmlHeader();
-  html += "<h2>Dashboard</h2>";
-  if (sensors != NULL)
-    html += sensors->getHTML();
-  if (actors != NULL)
-    html += actors->getHTML();
-  html += "<h2>Menu</h2>";
-  html += "<p>[<a href=\"/config\">Konfiguration</a>] ";
-  html +=    "[<a href=\"/getconfig\">Konfiguration (json)</a>] ";
-  html +=    "[<a href=\"/getvalues\">Werte (json)</a>] ";
-  html +=    "[<a href=\"/getactors\">Aktoren (json)</a></p>";
-  html += htmlFooter();
+  writelog("serverOnDashboard - start");
+  //String html = htmlHeader();
+  //html += "<h2>Dashboard</h2>";
+  //if (sensors != NULL)
+  //  html += sensors->getHTML();
+  //if (actors != NULL)
+  //  html += actors->getHTML();
+  String html = "<html><body>"
+        "<h2>Menu</h2>"
+        "<p>[<a href=\"/config\">Konfiguration</a>] "
+        "[<a href=\"/getconfig\">Konfiguration (json)</a>] "
+        "[<a href=\"/getvalues\">Werte (json)</a>] "
+        "[<a href=\"/getactors\">Aktoren (json)</a></p>"
+        "</body></html>";
+  //html += htmlFooter();
 
-  server->send(200, "text/html", html);
+  server.send(200, "text/html", html);
+
+  writelog("serverOnDashboard - ende");
 }
 
 String TGDevice::getHtmlConfig()
@@ -267,41 +303,48 @@ String TGDevice::getHtmlConfig()
 
 void TGDevice::serverOnConfig()
 {
-  server->send(200, "text/html", getHtmlConfig());
+  writelog("serverOnConfig");
+  server.send(200, "text/html", getHtmlConfig());
 }
 
 void TGDevice::serverOnSaveConfig()
 {
-  for(int i=0; i<server->args(); i++)
-    deviceconfig->setValue(server->argName(i), server->arg(i));
+  writelog("serverOnSaveConfig");
+  for(int i=0; i<server.args(); i++)
+    deviceconfig->setValue(server.argName(i), server.arg(i));
   doAfterConfigChange();
-  server->send(200, "text/html", getHtmlConfig());
+  server.send(200, "text/html", getHtmlConfig());
 }
 
 void TGDevice::serverOnWriteConfig()
 {
+  writelog("serverOnWriteConfig");
   deviceconfig->writeEEPROM();
-  server->send(200, "text/html", getHtmlConfig());
+  server.send(200, "text/html", getHtmlConfig());
 }
 
 String TGDevice::jsonHeader()
 {
-  return "{ \"Version\": \""+deviceversion+"\", \"DeviceID\": \""+deviceID+"\"";
+  writelog("jsonHeader");
+  String json = "{ \"Version\": \""+deviceversion+"\", \"DeviceID\": \""+deviceID+"\"";
+  return json;
 }
 
 void TGDevice::serverOnGetConfig()
 {
+  writelog("serverOnGetConfig");
   boolean all = false;
-  if (server->args() > 0)
-    if (server->argName(0) == "all");
-      all = server->arg(0) == "Y";
+  if (server.args() > 0)
+    if (server.argName(0) == "all");
+      all = server.arg(0) == "Y";
 
   String json = jsonHeader() + ", " + deviceconfig->getJson(all) + " }";
-  server->send(200, "application/json", json);
+  server.send(200, "application/json", json);
 }
 
 void TGDevice::serverOnPutConfig()
 {
+  writelog("serverOnPutConfig");
   /*
   * 07.10.2019
   * Damit (also ohne Wiederholgruppen, können wir das lesen vereinfachen
@@ -317,12 +360,14 @@ void TGDevice::serverOnPutConfig()
 
 String TGDevice::getValuesJson(const boolean t_angefordert)
 {
+  writelog("getValuesJson");
   return jsonHeader() + ", " + sensors->getJson(t_angefordert) + " }";
 }
 
 void TGDevice::serverOnGetValues()
 {
-  server->send(200, "application/json", getValuesJson(true));
+  writelog("serverOnGetValues");
+  server.send(200, "application/json", getValuesJson(true));
 }
 
 String TGDevice::getActorsJson(const boolean t_angefordert)
@@ -332,7 +377,8 @@ String TGDevice::getActorsJson(const boolean t_angefordert)
 
 void TGDevice::serverOnGetActors()
 {
-  server->send(200, "application/json", getActorsJson(true));
+  writelog("serverOnGetActors");
+  server.send(200, "application/json", getActorsJson(true));
 }
 
 /**
@@ -345,33 +391,39 @@ void TGDevice::serverOnSetActor()
   String status="";
   String endtime="";
 
-  for(int i=0; i<server->args(); i++)
-    if (server->argName(i) == "id")
-      id = server->arg(i);
-    else if (server->argName(i) == "status")
-      id = server->arg(i);
-    else if (server->argName(i) == "endtime")
-      id = server->arg(i);
+  for(int i=0; i<server.args(); i++)
+    if (server.argName(i) == "id")
+      id = server.arg(i);
+    else if (server.argName(i) == "status")
+      id = server.arg(i);
+    else if (server.argName(i) == "endtime")
+      id = server.arg(i);
 
   if ((id != "") and (status != ""))
     actors->setStatus(id,(char)(status[0]));
   if ((id != "") and (endtime != ""))
     actors->setEndtime(id,endtime.toInt());
 
-  server->send(200, "text/html", getActorsJson(false));
+  server.send(200, "text/html", getActorsJson(false));
 }
 
 // http JSON Post:
 // https://techtutorialsx.com/2016/07/21/esp8266-post-requests/
-boolean TGDevice::httpRequest(const String& url, const String& values, const boolean t_withresponse, String& response)
+boolean TGDevice::httpRequest(const char* url, const String& values, const boolean t_withresponse, String& response)
 {
   boolean erg = false;
 
-  if ((host == "") or (url==""))
+  writelog("httpRequest");
+  writelog("host: \""+String(host)+"\"");
+  writelog("url: \""+String(url)+"\"");
+
+  if ((String(host) == "") or (String(url)==""))
     return erg;
 
-  String aurl = host+"\"+"+url;
-  writelog("Value Request to: \""+aurl+"\n");
+  String aurl = String(host)+"\""+String(url);
+  writelog("Value Request to: \""+aurl+"\"");
+
+  return erg;
 
   HTTPClient *http = new HTTPClient;    //Declare object of class HTTPClient
 
@@ -431,12 +483,14 @@ void TGDevice::timer()
 
 void TGDevice::deviceLoop()
 {
-  timer();
+  //timer();
 
-  server->handleClient();
+  //writelog("handleClient");
+  server.handleClient();
 
   if ((sensors != NULL) and sensors->hasMembers())
     {
+      //writelog("in sensor Loop");
       boolean needReporting = false;
       if (timeTest(lastMessTime,messTime))
         {
@@ -450,12 +504,13 @@ void TGDevice::deviceLoop()
       if (needReporting)
         {
           String d_response = "";
-          httpRequest(urlsensordata, getValuesJson(false), false, d_response);
+          //httpRequest(urlsensordata, getValuesJson(false), false, d_response);
         }
     }
 
   if ((actors != NULL) and actors->hasMembers())
     {
+      //writelog("in actors Loop");
       if (timeTest(lastActorTime,actorTime))
         {
           boolean needReporting = actors->action();
@@ -463,13 +518,15 @@ void TGDevice::deviceLoop()
           if (needReporting)
             {
               String d_response = "";
-              httpRequest(urlactordata, getActorsJson(false), false, d_response);
+              //httpRequest(urlactordata, getActorsJson(false), false, d_response);
             }
         }
     }
 
+  //writelog("doLoop");
   doLoop();
 
+  //writelog("delay");
   delay(loopDelayMS);
 }
 

@@ -1,5 +1,10 @@
 #include <tgSensor.hpp>
 
+void debugS(const String& s)
+{
+  Serial.println(s);
+}
+
 float TtgSensor::doGetMessValue()
 {
   return 0;
@@ -7,10 +12,17 @@ float TtgSensor::doGetMessValue()
 
 void TtgSensor::messWert()
 {
+  debugS("TtgSensor::messWert");
   newValue = doGetMessValue();
 
-  if (abs(newValue - value) > *(pdelta))
+  debugS("newValue:"+String(newValue));
+  /*
+  debugS("pdelta:"+String(*pdelta));
+
+  if (abs(newValue - value) > *pdelta)
     changed = true;
+  */    
+  value = newValue;
   messTime = millis();
 }
 
@@ -35,6 +47,7 @@ void TtgSensorsList::add(TtgSensor* value)
 
 boolean TtgSensorsList::messWerte()
 {
+  debugS("TtgSensorsList::messWerte");
   boolean needReporting = false;
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
@@ -76,8 +89,8 @@ String TtgSensorsList::getJson(const boolean t_angefordert)
         json += "\"id\" : \""+element->id+"\",";
         long sec = (now - element->messTime) / 1000;
         json += "\"sec\" : \""+String(sec)+"\",";
-        json += ", \"value\" : \""+String(element->value)+"\"";
-        json += "}, ";
+        json += "\"value\" : \""+String(element->value)+"\"";
+        json += "} ";
         if (!t_angefordert)
           {
             element->changed = false;
@@ -93,15 +106,15 @@ String TtgSensorsList::getJson(const boolean t_angefordert)
 
 String TtgSensorsList::getHTML()
 {
-  String html = "<table><tr>";
+  String html = "<table border=\"1\"><tr><th>ID</th>";
   int now = millis();
 
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     html += "<th>"+element->id+"</th>";
-  html += "</tr><tr>";
+  html += "</tr><tr><td>Value</td>";
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     html += "<td>"+String(element->value)+"</td>";
-  html += "</tr><tr>";
+  html += "</tr><tr><td>[s]</td>";
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
       int sec = (now - element->messTime) / 1000;

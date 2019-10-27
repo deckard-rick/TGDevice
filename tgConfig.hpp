@@ -14,18 +14,18 @@ class TtgConfConfig
     int groesse;
     boolean secure;
     String description;
-    String *psval;
+    char *psval;
     int *pival;
-    float *pdval;
+    float *pfval;
     TtgConfConfig *next;
-    TtgConfConfig(const String& aFieldname,const String& aTyp, const int aGroesse, const boolean aSecure, const String& aDescription, String *aps, int *api, float *apf);
+    TtgConfConfig(const String& aFieldname,const String& aTyp, const int aGroesse, const boolean aSecure, const String& aDescription, char *aps, int *api, float *apf);
 };
 
 class TtgDeviceConfig
 {
   public:
     TtgDeviceConfig(const String& t_deviceversion);
-    void addConfig(const String& aFieldname, const String& aTyp, const int aGroesse, const boolean aSecure, const String& aDescription, String* aps, int* api, float* apf);
+    void addConfig(const String& t_fieldname, const String& aTyp, const int aGroesse, const boolean aSecure, const String& aDescription, char *aps, int *api, float *apf);
     void setValue(const String& fieldname, const String& value);
     String getValue(const String& fieldname);
     int getValueI(const String& fieldname);
@@ -38,7 +38,7 @@ class TtgDeviceConfig
     String getHtmlForm();
   protected:
   private:
-    String deviceversion;  //MAX 7 Zeichen
+    String deviceversion;
     TtgConfConfig *firstelement = NULL, *lastelement = NULL;
     TtgConfConfig* getFieldElement(const String& fieldname);
 };
