@@ -34,7 +34,7 @@ void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, i
   //* beim read/write darauf achten
   //writelog("addConfig:"+aFieldname);
   //Aber wir hoffen/probiern erstmal mit eindeutigen Namen zurecht zu kommen
-/*
+
   TtgConfConfig* testElement = getFieldElement(t_fieldname);
   if (testElement != NULL)
     {
@@ -53,7 +53,6 @@ void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, i
       lastelement->next = newElement;
       lastelement = lastelement->next;
     }
-*/    
 }
 
 TtgConfConfig* TtgDeviceConfig::getFieldElement(const String& fieldname)

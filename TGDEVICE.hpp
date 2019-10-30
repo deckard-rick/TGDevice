@@ -53,11 +53,10 @@ class TGDevice
   public:
     TGDevice(const String& aDeviceVersion);
     void writelog(const String& s, boolean crLF=true);
-    void registerSensors(TtgSensorsList* t_sensors);
-    void registerActors(TtgActorsList* t_actor);
+    void registerSensorsList(TtgSensorsList* t_sensors);
+    void registerActorsList(TtgActorsList* t_actor);
     void deviceSetup();
     virtual void doCalcStatus();
-    void onDashboard();
     boolean httpRequest(const char* url, const String& values, const boolean t_withresponse, String& response);
     void deviceLoop();
   protected:
@@ -75,7 +74,7 @@ class TGDevice
   private:
     String deviceversion;
     String logModus = "S"; //"":nix "S":serial "<ip:port>"für Debugging via Netzwerk (später)
-    //ESP8266WebServer *server = NULL;
+    ESP8266WebServer *server = new ESP8266WebServer(80);
     boolean timerActive = false;
     int lastTimeMS = -1;
     int mainTimeMS = 0; //[ms] damit die Weiterschaltung in ms funnktioniert, aber
@@ -94,6 +93,7 @@ class TGDevice
     String getValuesJson(const boolean t_angefordert);
     String getActorsJson(const boolean t_angefordert);
     String getHtmlConfig();
+    void serverOnDashboard();
     void serverOnConfig();
     void serverOnSaveConfig();
     void serverOnWriteConfig();

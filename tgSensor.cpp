@@ -16,12 +16,11 @@ void TtgSensor::messWert()
   newValue = doGetMessValue();
 
   debugS("newValue:"+String(newValue));
-  /*
   debugS("pdelta:"+String(*pdelta));
 
   if (abs(newValue - value) > *pdelta)
     changed = true;
-  */    
+
   value = newValue;
   messTime = millis();
 }
@@ -99,7 +98,7 @@ String TtgSensorsList::getJson(const boolean t_angefordert)
         i++;
       }
 
-  json += "} }";
+  json += "}";
 
   return json;
 }
