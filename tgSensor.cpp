@@ -1,5 +1,17 @@
 #include <tgSensor.hpp>
 
+char htmlSensor1[] = "<table border=\"1\"><tr><th>ID</th>";
+char htmlSensor2[] = "<th>#id#</th>";
+char htmlSensor3[] = "</tr><tr><td>Value</td>";
+char htmlSensor4[] = "<td>#value</td>";
+char htmlSensor5[] = "</tr><tr><td>[s]</td>";
+char htmlSensor6[] = "<td><small>#sec#</small></td>";
+char htmlSensor7[] = "</tr></table>";
+
+char jsonSensors1[] = "\"S#i#\" : {\"id\" : \"#id#\",";
+char jsonSensors2[] = "\"sec\" : \"#sec#\", \"value\" : \"#value#\"} ";
+
+
 void debugS(const String& s)
 {
   Serial.println(s);
@@ -70,26 +82,31 @@ boolean TtgSensorsList::checkReporting(int t_reportTime)
     return needReporting;
 }
 
-//Man könnte das auch in die sensorsGruppe tun, Zugriff auf deviceVersion und DeviceID notwendig, oder Header Trennen
-String TtgSensorsList::getJson(const boolean t_angefordert)
+void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer outbuffer)
 {
-  String json = "\"values\" : { ";
+  outbuffer.add("\"values\" : { ");
 
-  boolean j_first = true;
+  boolean first = true;
   long now = millis();
 
+  char cbuf[10];
   int i=0;
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     if (t_angefordert or element->changed) //Die Reported werden müssen, werden zuvor auf changed gesetzt
       {
-        if (!(j_first)) json += ", ";
-        j_first = false;
-        json += "\"VAL"+String(i)+"\" : {";
-        json += "\"id\" : \""+element->id+"\",";
+        if (!first)
+          outbuffer.add(", ");
+        first = false;
+
+        outbuffer.add(jsonSensors1);
+        sprintf(cbuf,"%d",i); outbuffer.replace("i",cbuf);
+        outbuffer.replace("id",element->id);
+
         long sec = (now - element->messTime) / 1000;
-        json += "\"sec\" : \""+String(sec)+"\",";
-        json += "\"value\" : \""+String(element->value)+"\"";
-        json += "} ";
+        outbuffer.add(jsonSensors2);
+        sprintf(cbuf,"%d",sec); outbuffer.replace("sec",cbuf);
+        sprintf(cbuf,"%7.2f",element->value); outbuffer.replace("value",cbuf);
+
         if (!t_angefordert)
           {
             element->changed = false;
@@ -98,27 +115,32 @@ String TtgSensorsList::getJson(const boolean t_angefordert)
         i++;
       }
 
-  json += "}";
-
-  return json;
+  outbuffer.add("}");
 }
 
-String TtgSensorsList::getHTML()
+void TtgSensorsList::html(TGCharbuffer* outbuffer)
 {
-  String html = "<table border=\"1\"><tr><th>ID</th>";
+  outbuffer->add(htmlSensor1);
+
   int now = millis();
 
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
-    html += "<th>"+element->id+"</th>";
-  html += "</tr><tr><td>Value</td>";
+    {
+       outbuffer->add(htmlSensor2);
+       outbuffer->replace("id",element->id);
+    }
+  outbuffer->add(htmlSensor3);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
-    html += "<td>"+String(element->value)+"</td>";
-  html += "</tr><tr><td>[s]</td>";
+    {
+    outbuffer->add(htmlSensor4);
+    outbuffer->replace("value",element->value);
+   }
+  outbuffer->add(htmlSensor5);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
       int sec = (now - element->messTime) / 1000;
-      html += "<td><small>"+String(sec)+"</small></td>";
+      outbuffer->add(htmlSensor6);
+      outbuffer->replace("sec",sec);
     }
-  html += "</tr></table>";
-  return html;
+  outbuffer->add(htmlSensor7);
 }

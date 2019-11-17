@@ -28,8 +28,9 @@
 #ifndef TGDEVICE_H
 #define TGDEVICE_H
 
-#include <TGConfig.hpp>
+#include <TGCharbuffer.hpp>
 #include <TGSensor.hpp>
+#include <TGConfig.hpp>
 #include <TGActor.hpp>
 
 #include <Arduino.h>
@@ -51,13 +52,13 @@
 class TGDevice
 {
   public:
-    TGDevice(const String& aDeviceVersion);
+    TGDevice(const char* aDeviceVersion);
     void writelog(const String& s, boolean crLF=true);
     void registerSensorsList(TtgSensorsList* t_sensors);
     void registerActorsList(TtgActorsList* t_actor);
     void deviceSetup();
     virtual void doCalcStatus();
-    boolean httpRequest(const char* url, const String& values, const boolean t_withresponse, String& response);
+    boolean httpRequest(const char* url, const char* values, const boolean t_withresponse, char* response);
     void deviceLoop();
   protected:
     TtgDeviceConfig *deviceconfig;
@@ -70,9 +71,8 @@ class TGDevice
     int maintime = 0;   //[s]  Wir schalten im Garten unabhängig vom Wochentag, d.h. Verwaltung von 00:00:00 bis 23:59:59 reicht, also 0 bis 86399 Sekunden reicht.
     TtgSensorsList *sensors = NULL;
     TtgActorsList *actors = NULL;
-    char deviceID[16], wifiSSID[16], wifiPWD[32], host[32];
+    char deviceid[16], wifiSSID[16], wifiPWD[32], host[32];
   private:
-    String deviceversion;
     String logModus = "S"; //"":nix "S":serial "<ip:port>"für Debugging via Netzwerk (später)
     ESP8266WebServer *server = new ESP8266WebServer(80);
     boolean timerActive = false;
@@ -87,12 +87,12 @@ class TGDevice
     char urlgettimesec[32] = {'\0'};
     char urlsensordata[32] = {'\0'};
     char urlactordata[32] = {'\0'};
-    String htmlHeader();
-    String htmlFooter();
-    String jsonHeader();
-    String getValuesJson(const boolean t_angefordert);
-    String getActorsJson(const boolean t_angefordert);
-    String getHtmlConfig();
+    void htmlHeader();
+    void htmlFooter();
+    void jsonHeader();
+    void jsonSensors(const boolean t_angefordert);
+    void jsonActors(const boolean t_angefordert);
+    void htmlConfig();
     void serverOnDashboard();
     void serverOnConfig();
     void serverOnSaveConfig();

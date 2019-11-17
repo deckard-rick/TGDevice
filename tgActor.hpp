@@ -2,13 +2,15 @@
 #define TGACTOR_H
 
 #include <Arduino.h>
+#include <tgCharbuffer.hpp>
 
 class TtgActor
 {
   public:
-    TtgActor(const String& t_id, int *t_maintime) {id = t_id; maintime = t_maintime;};
+    TtgActor(const char* t_id, int *t_maintime)
+      { strcpy(id,t_id);  maintime = t_maintime;};
     int setAutoTimes(int t_start, int t_time);
-    String id;
+    char id[32];
     char status='N';  //Y on, O autoON, F autoOFF, N off
     boolean changed = false;
     int autoStart = 0;
@@ -32,10 +34,10 @@ class TtgActorsList
     boolean hasMembers();
     TtgActor* add(TtgActor *t_value);
     boolean action();
-    String getJson(const boolean t_angefordert);
-    void setStatus(String t_id, char t_status);
-    void setEndtime(String t_id, int t_endtime);
-    virtual String getHTML();
+    void json(const boolean t_angefordert, TGCharbuffer outbuffer);
+    void setStatus(char* t_id, char t_status);
+    void setEndtime(char* t_id, int t_endtime);
+    virtual void html(TGCharbuffer* outbuffer);
   protected:
     virtual void doCalcStatus();
   private:

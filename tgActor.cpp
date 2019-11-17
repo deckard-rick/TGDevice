@@ -1,5 +1,17 @@
 #include <tgActor.hpp>
 
+char* actorStatus[] = {"Y","N","A","F"};
+char* actorColor[] = {"green","red","lightgreen","lightred"};
+
+const char htmlActor1[] = "<table>";
+char htmlActor2[] = "<tr><th><button style=\"color=#color#\">#id#</button>";  //action = id=element->&status=f_status
+char htmlActor3[] = "<td><button style=\"color=\"#color#\">Intervall 10min</button>";  //action = id=element->&endtime=f_endtime
+char htmlActor4[] = "</tr>";
+char htmlActor5[] = "</table>";
+
+char jsonActors1[] = "\"A#i#\" : {\"id\" : \"#id#\", \"status\" : \"#status#\", ";
+char jsonActors2[] = "\"autostart\" : \"#autostart#\", \"autoend\" : \"#autoend#\", \"endtime\" : \"#endtime#\"}";
+
 int TtgActor::setAutoTimes(int t_start, int t_time)
 {
   autoStart = t_start;
@@ -94,84 +106,81 @@ void TtgActorsList::doCalcStatus()
 {
 }
 
-void TtgActorsList::setStatus(String t_id, char t_status)
+void TtgActorsList::setStatus(char* t_id, char t_status)
 {
   for (TtgActor *element = firstelement; element != NULL; element = element->next)
-    if (element->id == t_id)
+    if (strcmp(element->id,t_id) == 0)
       {
         element->setStatus(t_status);
         element->action();
       }
 }
 
-void TtgActorsList::setEndtime(String t_id, int t_endtime)
+void TtgActorsList::setEndtime(char* t_id, int t_endtime)
 {
   for (TtgActor *element = firstelement; element != NULL; element = element->next)
-    if (element->id == t_id)
+    if (strcmp(element->id,t_id) == 0)
       element->endTime = t_endtime;  //activation via automatic timer (max after actionTime [s]
 }
 
-String TtgActorsList::getJson(boolean t_angefordert)
+void TtgActorsList::json(boolean t_angefordert, TGCharbuffer outbuffer)
 {
-  String json = "\"actors\" : { ";
+  outbuffer.add("\"actors\" : { ");
 
+  char cbuf[10];
   boolean first = true;
   int i = 0;
   for (TtgActor *element = firstelement; element != NULL; element = element->next)
     if (t_angefordert or element->changed)
       {
-        if (!first) json += ", ";
-        json += "\"A"+String(i)+"\" : {";
-        json += "\"id\" : \""+element->id+"\",";  //Die ID ist innerhalb eines Devices eindeutig
-        json += ", \"status\" : \""+String(element->status)+"\"";
-        json += "\"autostart\" : \""+String(element->autoStart)+"\",";
-        json += "\"autoend\" : \""+String(element->autoEnd)+"\",";
-        json += "\"endtime\" : \""+String(element->endTime)+"\",";
-        json += "}, ";
+        if (!first)
+          outbuffer.add(", ");
+        first = false;
+
+        outbuffer.add(jsonActors1);
+        sprintf(cbuf,"%d",i); outbuffer.replace("i",cbuf);
+        outbuffer.replace("id",element->id);
+        outbuffer.replace("status",element->status);
+
+        outbuffer.add(jsonActors2);
+        sprintf(cbuf,"%d",element->autoStart); outbuffer.replace("autostart",cbuf);
+        sprintf(cbuf,"%d",element->autoEnd); outbuffer.replace("autoend",cbuf);
+        sprintf(cbuf,"%d",element->endTime); outbuffer.replace("endtime",cbuf);
 
         if (!t_angefordert) element->changed = false;
+        ++i;
       }
 
-  json += "}";
-
-  return json;
+  outbuffer.add("}");
 }
 
-String TtgActorsList::getHTML()
+void TtgActorsList::html(TGCharbuffer* outbuffer)
 {
-  String html = "<table>";
+  outbuffer->add(htmlActor1) ; String html = "<table>";
   int f_endtime = (millis() / 1000) + 600;
 
   for (TtgActor *element = firstelement; element != NULL; element = element->next)
     {
-      char f_status = element->status;
-      String f_color;
-      if (f_status == 'Y')
+      int index = 1;
+      switch (element->status)
         {
-          f_status = 'N';
-          f_color = "red";
+          case 'Y': index = 1; break;
+          case 'N': index = 2; break;
+          case 'A': index = 3; break;
+          case 'F': index = 4; break;
+          default:  index = 1; break;
         }
-      else if (f_status == 'N')
-        {
-          f_status = 'A';
-          f_color = "lightGreen";
-        }
-      if (f_status == 'A')
-        {
-          f_status = 'F';
-          f_color = "lightRed";
-        }
-      if (f_status == 'F')
-        {
-          f_status = 'N';
-          f_color = "red";
-        }
-      html += "<tr><th><button style=\"color="+f_color+"\">"+element->id+"</button>";  //action = id=element->&status=f_status
+      outbuffer->add(htmlActor2);
+      outbuffer->replace("id",element->id);
+      outbuffer->replace("color",actorColor[index]);
+      outbuffer->replace("status",actorStatus[index]);
       if ((element->status == 'A') or (element->status == 'F'))
-        html += "<td><button style=\"color=\"lightGreen\">Intervall 10min</button>";  //action = id=element->&endtime=f_endtime
-      html += "</tr>";
+        {
+          outbuffer->add(htmlActor3);
+          outbuffer->replace("id",element->id);
+          outbuffer->replace("color",actorColor[2]);
+        }
+      outbuffer->add(htmlActor4);
     }
-  html += "</table>";
-
-  return html;
+  outbuffer->add(htmlActor5);
 }

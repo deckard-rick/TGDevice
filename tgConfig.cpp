@@ -1,17 +1,24 @@
 #include <tgConfig.hpp>
 
+char htmlForm1[] = "<h2>Konfiguration</h2><form action=\"saveconfig\" method=\"POST\">";
+char htmlForm2[] = "<label>#fieldname#</label><input type=\"text\" name=\"#fieldname#\"  size=#size# value=\"#value\"/><br/>#description#<br/><br/>";
+char htmlForm3[] =  "<button type=\"submit\" name=\"action\">Werte &auml;ndern</button></form>";
+char htmlForm4[] =  "<form action=\"writeconfig\"><button type=\"submit\" name=\"action\">Config festschreiben</button></form>";
+
+char jsonConfig1[] = "\"#fieldname#\": \"#value#\"";
+
 void debug(const String& s)
 {
   Serial.println(s);
 }
 
-TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, char *aps, int *api, float *apf)
+TtgConfConfig::TtgConfConfig(const char* t_fieldname, const char t_typ, int aGroesse, boolean aSecure, const char* t_description, char *aps, int *api, float *apf)
 {
-  fieldname = aFieldname;
-  typ = aTyp;
+  strcpy(fieldname,t_fieldname);
+  typ = t_typ;
   groesse = aGroesse;
   secure = aSecure;
-  description = aDescription;
+  strcpy(description,t_description);
   psval = aps;
   pival = api;
   pfval = apf;
@@ -21,12 +28,12 @@ TtgConfConfig::TtgConfConfig(const String& aFieldname, const String& aTyp, int a
 /**
  * constructor
  */
-TtgDeviceConfig::TtgDeviceConfig(const String& t_deviceversion)
+TtgDeviceConfig::TtgDeviceConfig(const char* t_deviceversion)
 {
   deviceversion = t_deviceversion;
 }
 
-void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, int aGroesse, boolean aSecure, const String& aDescription, char *aps, int* api, float* apf)
+void TtgDeviceConfig::addConfig(const char* t_fieldname, const char t_typ, int aGroesse, boolean aSecure, const char* t_description, char *aps, int* api, float* apf)
 {
   //Bei doppelten Namen bekommen wir Probleme, die wir dadurch lösen könnten, das wir beim
   //* get den ersten nehmen
@@ -38,11 +45,11 @@ void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, i
   TtgConfConfig* testElement = getFieldElement(t_fieldname);
   if (testElement != NULL)
     {
-       debug("git es schon:"+testElement->fieldname);
+       debug("git es schon:"+String(testElement->fieldname));
        return; //TGMARK besser raise eine Exception (wie geht das in C++ ?)
     }
 
-  TtgConfConfig *newElement = new TtgConfConfig(t_fieldname, aTyp, aGroesse, aSecure, aDescription, aps, api, apf);
+  TtgConfConfig *newElement = new TtgConfConfig(t_fieldname, t_typ, aGroesse, aSecure, t_description, aps, api, apf);
   if (firstelement == NULL)
     {
       firstelement = newElement;
@@ -55,11 +62,11 @@ void TtgDeviceConfig::addConfig(const String& t_fieldname, const String& aTyp, i
     }
 }
 
-TtgConfConfig* TtgDeviceConfig::getFieldElement(const String& fieldname)
+TtgConfConfig* TtgDeviceConfig::getFieldElement(const char* fieldname)
 {
   TtgConfConfig *erg = NULL;
   for (TtgConfConfig* i = firstelement; i != NULL; i=i->next)
-    if (i->fieldname == fieldname)
+    if (strcmp(i->fieldname,fieldname) == 0)
       {
         erg = i;
         break;
@@ -67,74 +74,81 @@ TtgConfConfig* TtgDeviceConfig::getFieldElement(const String& fieldname)
   return erg;
 }
 
-String TtgDeviceConfig::getValue(const String& fieldname)
+void TtgDeviceConfig::getValue(const char* fieldname, char* t_out)
 {
-  String erg = "";
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
-    if (i->typ == "S")
-      erg = String(i->psval);
-    else if (i->typ == "I")
-      erg = String(*(i->pival));
-    else if (i->typ == "F")
-      erg = String(*(i->pfval));
-  debug ("configGetValue("+fieldname+"):"+erg);
-  return erg;
+    if (i->typ == 'S')
+      t_out = i->psval;
+    else if (i->typ == 'I')
+      sprintf(t_out,"%d",i->pival);
+    else if (i->typ == 'F')
+      sprintf(t_out,"%7.sf",i->pfval);
+  //debug ("configGetValue("+fieldname+"):"+erg);
 }
 
-int TtgDeviceConfig::getValueI(const String& fieldname)
+int TtgDeviceConfig::getValueI(const char* fieldname)
 {
   int erg = 0;
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
-    if (i->typ == "I")
+    if (i->typ == 'I')
       erg = *(i->pival);
+    else if (i->typ == 'F')
+      erg = round(*(i->pfval));
     else
-      erg = getValue(fieldname).toInt();
+      sscanf(i->psval,"%d",&erg);
   return erg;
 }
 
-float TtgDeviceConfig::getValueD(const String& fieldname)
+float TtgDeviceConfig::getValueD(const char* fieldname)
 {
   float erg = 0;
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
-    if (i->typ == "F")
+    if (i->typ == 'I')
+      erg = *(i->pival);
+    else if (i->typ == 'F')
       erg = *(i->pfval);
     else
-      erg = getValue(fieldname).toFloat();
+      sscanf(i->psval,"%f",&erg);
   return erg;
 }
 
-void TtgDeviceConfig::setValue(const String& fieldname, const String& value)
+void TtgDeviceConfig::setValue(const char* fieldname, const char* value)
 {
-  debug ("setValue("+fieldname+"):"+value);
+  //debug ("setValue("+fieldname+"):"+value);
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
-    if (i->typ == "S")
-      value.toCharArray(i->psval,i->groesse);
-    else if (i->typ == "I")
-      *(i->pival) = value.toInt();
-    else if (i->typ == "F")
-      *(i->pfval) = value.toFloat();
+    if (i->typ == 'S')
+      strcpy(i->psval,value); //TODO gf Groesse beachten
+    else if (i->typ == 'I')
+      sscanf(value,"%d",i->pival);
+    else if (i->typ == 'F')
+     sscanf(value,"%f",i->pfval);
 }
 
-String TtgDeviceConfig::getJson(boolean all)
+void TtgDeviceConfig::json(boolean all, TGCharbuffer outbuffer)
 {
-  String json = "\"configs\" : { ";
+  outbuffer.add("\"configs\" : { ");
 
-  boolean d_first = true;
+  boolean first = true;
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
     {
       if (all || !i->secure)
         {
-          if (!d_first) json += ",";
-          json += "\""+i->fieldname+"\": \""+getValue(i->fieldname)+"\"";
-          d_first = false;
+          if (!first)
+            outbuffer.add(", ");
+          first = false;
+
+          outbuffer.add(jsonConfig1);
+          outbuffer.replace("fieldname",i->fieldname);
+          char value[128];
+          getValue(i->fieldname,value);
+          outbuffer.replace("value",value);
         }
     }
-  json += "}";
-  return json;
+  outbuffer.add("}");
 }
 
 void TtgDeviceConfig::putJson(const String& json)
@@ -148,6 +162,7 @@ void TtgDeviceConfig::putJson(const String& json)
   int modus = 0;
   String fieldname = "";
   String fieldvalue = "";
+  char value[TtgConfConfig::maxValueLen] = "";
   for (int i=0; i < json.length(); i++)
     {
       char c = json[i];
@@ -160,9 +175,10 @@ void TtgDeviceConfig::putJson(const String& json)
       else if ((modus == 4) and (c == '"')) modus = 5;
       else if ((modus == 5) and (c == '"'))
         {
-          if ((fieldname == "DeviceID") and (fieldvalue != getValue("DeviceID")))
+          getValue("DeviceID",value);
+          if ((fieldname == "DeviceID") and (fieldvalue != String(value)))
             return;
-          setValue(fieldname,fieldvalue);
+          //setValue(fieldname,fieldvalue);
           fieldname = "";
           fieldvalue = "";
           modus = 1;
@@ -175,11 +191,11 @@ int TtgDeviceConfig::getEEPROMSize()
 {
   int erg = 0;
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
-    if (i->typ == "S")
+    if (i->typ == 'S')
       erg += i->groesse;
-    else if (i->typ == "I")
+    else if (i->typ == 'I')
       erg += sizeof(int);
-    else if (i->typ == "F")
+    else if (i->typ == 'F')
       erg += sizeof(float);
     else
       ;
@@ -194,7 +210,7 @@ void TtgDeviceConfig::readEEPROM()
 
   boolean valid = true;
   unsigned int i=0;
-  for (int j=0; j < deviceversion.length(); j++)
+  for (int j=0; j < strlen(deviceversion); j++)
     {
       if (EEPROM.read(configStart + i) != deviceversion[j])
         {
@@ -209,7 +225,7 @@ void TtgDeviceConfig::readEEPROM()
       //  *((char*)&configs + i) = EEPROM.read(configStart + i);
       for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)
         {
-          if (elem->typ == "S")
+          if (elem->typ == 'S')
             for(unsigned int j=0; j<elem->groesse; j++)
               {
                 //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
@@ -217,19 +233,19 @@ void TtgDeviceConfig::readEEPROM()
                 elem->psval[j] = EEPROM.read(configStart + i);
                 i++;
               }
-          else if (elem->typ == "I")
+          else if (elem->typ == 'I')
             for(unsigned int j=0; j<sizeof(int); j++)
               {
                 *((char*)(elem->pival + j)) = EEPROM.read(configStart + i);
                 i++;
               }
-          else if (elem->typ == "F")
+          else if (elem->typ == 'F')
             for(unsigned int j=0; j<sizeof(float); j++)
               {
                 *((char*)(elem->pfval + j)) = EEPROM.read(configStart + i);
                 i++;
               }
-          debug("readEEPROM:"+elem->fieldname+" => "+getValue(elem->fieldname));
+          //debug("readEEPROM:"+elem->fieldname+" => "+getValue(elem->fieldname));
         }
     }
 }
@@ -241,25 +257,25 @@ void TtgDeviceConfig::writeEEPROM()
   //for (unsigned int i=0; i<sizeof(configs); i++)
   //  EEPROM.write(configStart + i, *((char*)&configs + i));
   unsigned int i=0;
-  for(unsigned int j=0; j < deviceversion.length(); j++)
+  for(unsigned int j=0; j < strlen(deviceversion); j++)
     {
       EEPROM.write(configStart + i, deviceversion[j]);
       i++;
     }
   for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)
-    if (elem->typ == "S")
+    if (elem->typ == 'S')
       for(unsigned int j=0; j<elem->groesse; j++)
         { //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
           EEPROM.write(configStart + i, elem->psval[j]) ;
           i++;
         }
-    else if (elem->typ == "I")
+    else if (elem->typ == 'I')
       for(unsigned int j=0; j<sizeof(int); j++)
         {
           EEPROM.write(configStart + i, *((char*)(elem->pival + j)));
           i++;
         }
-    else if (elem->typ == "F")
+    else if (elem->typ == 'F')
       for(unsigned int j=0; j<sizeof(float); j++)
         {
           EEPROM.write(configStart + i, *((char*)(elem->pfval + j)));
@@ -268,22 +284,20 @@ void TtgDeviceConfig::writeEEPROM()
   EEPROM.commit();
 }
 
-String TtgDeviceConfig::getHtmlForm()
+void TtgDeviceConfig::htmlForm(TGCharbuffer* outbuffer)
 //TODO Paramter all für die Securen Parameter fehlt noch
 {
-  String html = "<h2>Konfiguration</h2>";
-  html += "<form action=\"saveconfig\" method=\"POST\">";
+  outbuffer->add(htmlForm1);
+
+  char value[TtgConfConfig::maxValueLen];
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
     {
-      html += "<label>"+i->fieldname+"</label><input type=\"text\" name=\""+i->fieldname+"\"  size="+String(i->groesse);
-      html += " value=\""+getValue(i->fieldname)+"\"/><br/>";
-      html += i->description+"<br/><br/>";
+      outbuffer->add(htmlForm2);
+      outbuffer->replace("fieldname",i->fieldname);
+      sprintf(value,"%d",i->groesse); outbuffer->replace("size",value);
+      getValue(i->fieldname,value);   outbuffer->replace("value",value);
+      outbuffer->replace("description",i->description);
     }
-  /**/
-  html += "<button type=\"submit\" name=\"action\">Werte &auml;ndern</button>";
-  html += "</form>";
-  html += "<form action=\"writeconfig\">";
-  html += "<button type=\"submit\" name=\"action\">Config festschreiben</button>";
-  html += "</form>";
-  return html;
+  outbuffer->add(htmlForm3);
+  outbuffer->add(htmlForm4);
 }
