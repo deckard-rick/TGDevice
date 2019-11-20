@@ -1,8 +1,6 @@
 #ifndef TGCHARBUFFER_H
 #define TGCHARBUFFER_H
 
-const int maxOutBuffer = 500;
-
 class TGCharbuffer
 {
   public:
@@ -13,8 +11,8 @@ class TGCharbuffer
     void replace(const char* id, const int ivalue);
     void replace(const char* id, const float fvalue);
   protected:
-
   private:
+    static const int maxOutBuffer = 150;
     char outbuffer[maxOutBuffer];
     int outpos = 0;
     int replacepos = 0;

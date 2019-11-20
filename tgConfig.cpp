@@ -1,4 +1,5 @@
 #include <tgConfig.hpp>
+#include <tgLogging.hpp>
 
 char htmlForm1[] = "<h2>Konfiguration</h2><form action=\"saveconfig\" method=\"POST\">";
 char htmlForm2[] = "<label>#fieldname#</label><input type=\"text\" name=\"#fieldname#\"  size=#size# value=\"#value\"/><br/>#description#<br/><br/>";
@@ -6,11 +7,6 @@ char htmlForm3[] =  "<button type=\"submit\" name=\"action\">Werte &auml;ndern</
 char htmlForm4[] =  "<form action=\"writeconfig\"><button type=\"submit\" name=\"action\">Config festschreiben</button></form>";
 
 char jsonConfig1[] = "\"#fieldname#\": \"#value#\"";
-
-void debug(const String& s)
-{
-  Serial.println(s);
-}
 
 TtgConfConfig::TtgConfConfig(const char* t_fieldname, const char t_typ, int aGroesse, boolean aSecure, const char* t_description, char *aps, int *api, float *apf)
 {
@@ -45,7 +41,7 @@ void TtgDeviceConfig::addConfig(const char* t_fieldname, const char t_typ, int a
   TtgConfConfig* testElement = getFieldElement(t_fieldname);
   if (testElement != NULL)
     {
-       debug("git es schon:"+String(testElement->fieldname));
+       TGLogging::get()->write("git es schon:")->write(testElement->fieldname)->crlf();
        return; //TGMARK besser raise eine Exception (wie geht das in C++ ?)
     }
 
@@ -84,7 +80,7 @@ void TtgDeviceConfig::getValue(const char* fieldname, char* t_out)
       sprintf(t_out,"%d",i->pival);
     else if (i->typ == 'F')
       sprintf(t_out,"%7.sf",i->pfval);
-  //debug ("configGetValue("+fieldname+"):"+erg);
+  TGLogging::get()->write ("configGetValue(")->write(fieldname)->write("):")->write(t_out)->crlf();
 }
 
 int TtgDeviceConfig::getValueI(const char* fieldname)
@@ -117,7 +113,7 @@ float TtgDeviceConfig::getValueD(const char* fieldname)
 
 void TtgDeviceConfig::setValue(const char* fieldname, const char* value)
 {
-  //debug ("setValue("+fieldname+"):"+value);
+  TGLogging::get()->write ("setValue(")->write(fieldname)->write("):")->write(value)->crlf();
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
     if (i->typ == 'S')
@@ -199,14 +195,14 @@ int TtgDeviceConfig::getEEPROMSize()
       erg += sizeof(float);
     else
       ;
-  debug("EEPROM-Size:"+String(erg));
+  TGLogging::get()->write("EEPROM-Size:")->write(erg)->crlf();
   return erg;
 }
 
 //https://playground.arduino.cc/Code/EEPROMLoadAndSaveSettings
 void TtgDeviceConfig::readEEPROM()
 {
-  debug("load Config");
+  TGLogging::get()->write("load Config")->crlf();
 
   boolean valid = true;
   unsigned int i=0;
@@ -245,14 +241,15 @@ void TtgDeviceConfig::readEEPROM()
                 *((char*)(elem->pfval + j)) = EEPROM.read(configStart + i);
                 i++;
               }
-          //debug("readEEPROM:"+elem->fieldname+" => "+getValue(elem->fieldname));
+          //+getValue(elem->fieldname)
+          //TGLogging::get()->write("readEEPROM:")->write(elem->fieldname)->write(" => ")->crlf();
         }
     }
 }
 
 void TtgDeviceConfig::writeEEPROM()
 {
-  debug("write Config");
+  TGLogging::get()->write("write Config")->crlf();
 
   //for (unsigned int i=0; i<sizeof(configs); i++)
   //  EEPROM.write(configStart + i, *((char*)&configs + i));

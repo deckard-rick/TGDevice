@@ -1,4 +1,5 @@
 #include <tgSensor.hpp>
+#include <tgLogging.hpp>
 
 char htmlSensor1[] = "<table border=\"1\"><tr><th>ID</th>";
 char htmlSensor2[] = "<th>#id#</th>";
@@ -12,11 +13,6 @@ char jsonSensors1[] = "\"S#i#\" : {\"id\" : \"#id#\",";
 char jsonSensors2[] = "\"sec\" : \"#sec#\", \"value\" : \"#value#\"} ";
 
 
-void debugS(const String& s)
-{
-  Serial.println(s);
-}
-
 float TtgSensor::doGetMessValue()
 {
   return 0;
@@ -24,11 +20,11 @@ float TtgSensor::doGetMessValue()
 
 void TtgSensor::messWert()
 {
-  debugS("TtgSensor::messWert");
+  //TGLogging::get()->write("TtgSensor::messWert")->crlf();
   newValue = doGetMessValue();
 
-  debugS("newValue:"+String(newValue));
-  debugS("pdelta:"+String(*pdelta));
+  //TGLogging::get()->write("newValue:")->write(newValue)->crlf();
+  //TGLogging::get()->write("pdelta:")->write(*pdelta)->crlf();
 
   if (abs(newValue - value) > *pdelta)
     changed = true;
@@ -58,7 +54,7 @@ void TtgSensorsList::add(TtgSensor* value)
 
 boolean TtgSensorsList::messWerte()
 {
-  debugS("TtgSensorsList::messWerte");
+  TGLogging::get()->write("TtgSensorsList::messWerte")->crlf();
   boolean needReporting = false;
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {

@@ -16,6 +16,7 @@
 */
 
 #include <tgDevice.hpp>
+#include <tgLogging.hpp>
 
 char htmlHeader1[] = "<html><body><h1>Device ID:#deviceid# Version(#deviceversion#)</h1>";
 char htmlFooter1[] = "<p>[<a href=\"/\">Main</a>]</br>[<a href=\"/config\">Configuration</a>][<a href=\"/getconfig\">Configuration (json)</a>]";
@@ -49,25 +50,7 @@ TGDevice::TGDevice(const char* t_deviceversion)
 }
 
 /**
-* public void writelog for logging/Debugging
-* param const String& t_s text to log
-* param boolean t_crlf  linw ends with CRLF (or not)
-*
-* uses logModus N=NO, S=serial, T=tcpServer
-*
-* TODO
-* * perhaps as static function for access from other classes
-* * modus T for sendeing Messagges to an tcpIP-Terminal
-*/
-void TGDevice::writelog(const String& s, boolean crLF)
-{
-  if (logModus == "S")
-    if (crLF) Serial.println(s);
-    else Serial.print(s);
-}
-
-/**
-* public void registerSensors
+* public void registerSensorsList
 * param TGSensorsList *t_sensors list to register
 *
 * registered the list of sensors, by this it is possible to use derives classes
@@ -78,7 +61,7 @@ void TGDevice::registerSensorsList(TtgSensorsList* t_sensors)
 }
 
 /**
-* public void registerActors
+* public void registerActorsList
 * param TGActorsList *t_actors list to register
 *
 * registered the list of actors, by this it is possible to use derives classes
@@ -98,48 +81,46 @@ void TGDevice::registerActorsList(TtgActorsList* t_actors)
 void TGDevice::deviceSetup()
 {
   //init serial device if neccessary for logging
-  if (logModus == "S")
-    Serial.begin(9600);
+  TGLogging::get()->setModus('S');
 
-  writelog("wait 10s");
-  delay(10000);
+  TGLogging::get()->write("wait 5s")->crlf();
+  delay(5000);
 
   //derived classes can print a hello message after boot to logging
-  writelog("doHello");
+  TGLogging::get()->write("doHello")->crlf();
   doHello();
 
   //register all config-parameter, sensors and actors with derived classe
-  writelog("doRegister");
+  TGLogging::get()->write("doRegister")->crlf();
   doRegister();
 
   //initialize EEPROM for read/write configuration for using after reboot
-  writelog("init EEPROM");
+  TGLogging::get()->write("init EEPROM")->crlf();
   EEPROM.begin(deviceconfig->getEEPROMSize());
 
   //loas configuration from EEPROM if possible (else default values)
-  //writelog("load configuration");
+  //TGLogging::get()->write("load configuration");
   //
   //deviceconfig->readEEPROM();
 
   //calculation in the configuration after changed, for example timetables
-  writelog("doAfterConfigChange");
+  TGLogging::get()->write("doAfterConfigChange")->crlf();
   doAfterConfigChange();
 
   //establish WiFi connection
-  writelog("WiFi: "+String(wifiSSID)+" ("+String(wifiPWD)+")");
+  TGLogging::get()->write("WiFi: ")->write(wifiSSID)->write(" (")->write(wifiPWD)->write(")");
   WiFi.begin(String(wifiSSID),String(wifiPWD));
-  writelog("<",false);
+  TGLogging::get()->write("[");
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(250);
-    writelog(".",false);
+    TGLogging::get()->write(".");
    }
-  writelog(">");
-  writelog("WiFi connected IP:",false);
-  writelog(WiFi.localIP().toString());
+  TGLogging::get()->write("]")->crlf();
+  TGLogging::get()->write("WiFi connected IP:")->write(WiFi.localIP().toString())->crlf();
 
   //initialize http-Server
-  writelog("init Server");
+  TGLogging::get()->write("init Server")->crlf();
   //https://stackoverflow.com/questions/32900314/esp8266webserver-setting-a-value-inside-a-class
   //server->on("/data.html", std::bind(&WebServer::handleSomeData, this));
   server->on("/",std::bind(&TGDevice::serverOnDashboard, this));
@@ -157,19 +138,19 @@ void TGDevice::deviceSetup()
     }
 
   //do other setup work, for examples http-server here and sensors in derived class
-  writelog("doSetup");
+  TGLogging::get()->write("doSetup")->crlf();
   doSetup();
 
   //start http-Server
-  writelog("start http-server");
+  TGLogging::get()->write("start http-server")->crlf();
   server->begin();
 
   //wait a moment
-  writelog("wait 500ms");
-  delay(500);
+  TGLogging::get()->write("wait 1s")->crlf();
+  delay(1000);
 
   //initializing finished
-  writelog("end initialisation");
+  TGLogging::get()->write("end initialisation")->crlf();
 }
 
 /**
@@ -177,7 +158,7 @@ void TGDevice::deviceSetup()
 */
 void TGDevice::doHello()
 {
-  writelog("start initialisation");
+  TGLogging::get()->write("start initialisation")->crlf();
 }
 
 /**
@@ -239,7 +220,7 @@ void TGDevice::doSetup()
 }
 
 /**
-* private String htmlHeader
+* private void htmlHeader
 *    default HTML-Header
 */
 void TGDevice::htmlHeader()
@@ -251,7 +232,7 @@ void TGDevice::htmlHeader()
 }
 
 /**
-* private String htmlFooter
+* private void htmlFooter
 *    default HTML-Footer
 */
 void TGDevice::htmlFooter()
@@ -266,7 +247,7 @@ void TGDevice::htmlFooter()
 
 void TGDevice::serverOnDashboard()
 {
-  writelog("serverOnDashboard");
+  TGLogging::get()->write("serverOnDashboard")->crlf();
 
   htmlHeader();
   outbuffer.add(htmlDashboard);
@@ -288,14 +269,14 @@ void TGDevice::htmlConfig()
 
 void TGDevice::serverOnConfig()
 {
-  writelog("serverOnConfig");
+  TGLogging::get()->write("serverOnConfig")->crlf();
   htmlConfig();
   server->send(200, "text/html", outbuffer.getout());
 }
 
 void TGDevice::serverOnSaveConfig()
 {
-  writelog("serverOnSaveConfig");
+  TGLogging::get()->write("serverOnSaveConfig")->crlf();
   char fieldname[TtgConfConfig::maxFieldLen];
   char value[TtgConfConfig::maxValueLen];
   for(int i=0; i<server->args(); i++)
@@ -311,7 +292,7 @@ void TGDevice::serverOnSaveConfig()
 
 void TGDevice::serverOnWriteConfig()
 {
-  writelog("serverOnWriteConfig");
+  TGLogging::get()->write("serverOnWriteConfig")->crlf();
   deviceconfig->writeEEPROM();
   htmlConfig();
   server->send(200, "text/html", outbuffer.getout());
@@ -319,7 +300,7 @@ void TGDevice::serverOnWriteConfig()
 
 void TGDevice::jsonHeader()
 {
-  writelog("jsonHeader");
+  TGLogging::get()->write("jsonHeader")->crlf();
   outbuffer.clear();
   outbuffer.add(jsonHeader1);
   outbuffer.replace("deviceid",deviceid);
@@ -328,7 +309,7 @@ void TGDevice::jsonHeader()
 
 void TGDevice::serverOnGetConfig()
 {
-  writelog("serverOnGetConfig");
+  TGLogging::get()->write("serverOnGetConfig")->crlf();
   boolean all = false;
   if (server->args() > 0)
     if (server->argName(0) == "all");
@@ -344,22 +325,24 @@ void TGDevice::serverOnGetConfig()
 
 void TGDevice::serverOnPutConfig()
 {
-  writelog("serverOnPutConfig");
-  /*
-  * 07.10.2019
-  * Damit (also ohne Wiederholgruppen, können wir das lesen vereinfachen
-  * { setzt auf Modus 1, dann kommt ein Feldname, dann :, dann ein Wert und ggf ein ,
-  * } können wir überlesen, wenn ein feld1 : { feld2 kommt, führt das reset zum lesen von feld2
-  */
-  String json = ""; //hier muss der POST-Body der Abfrage rein
+  TGLogging::get()->write("serverOnPutConfig")->crlf();
 
+  //TODO json String/CharBuffer noch aus dem Request holen
+  String json;
   deviceconfig->putJson(json);
   doAfterConfigChange();
+
+  jsonHeader();
+  outbuffer.add(", ");
+  deviceconfig->json(false,outbuffer);
+  outbuffer.add(" }");
+
+  server->send(200, "application/json", outbuffer.getout());
 }
 
 void TGDevice::jsonSensors(const boolean t_angefordert)
 {
-  writelog("jsonSensors");
+  TGLogging::get()->write("jsonSensors")->crlf();
   jsonHeader();
   outbuffer.add(", ");
   sensors->json(t_angefordert,outbuffer);
@@ -368,7 +351,7 @@ void TGDevice::jsonSensors(const boolean t_angefordert)
 
 void TGDevice::serverOnGetValues()
 {
-  writelog("serverOnGetValues");
+  TGLogging::get()->write("serverOnGetValues")->crlf();
   jsonSensors(true);
   server->send(200, "application/json", outbuffer.getout());
 }
@@ -383,7 +366,7 @@ void TGDevice::jsonActors(const boolean t_angefordert)
 
 void TGDevice::serverOnGetActors()
 {
-  writelog("serverOnGetActors");
+  TGLogging::get()->write("serverOnGetActors")->crlf();
   jsonActors(true);
   server->send(200, "application/json", outbuffer.getout());
 }
@@ -421,9 +404,9 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
 {
   boolean erg = false;
 
-  writelog("httpRequest");
-  writelog("host: \""+String(host)+"\"");
-  writelog("url: \""+String(url)+"\"");
+  TGLogging::get()->write("httpRequest")->crlf();
+  TGLogging::get()->write("host: \"")->write(host)->write("\"")->crlf();
+  TGLogging::get()->write("url: \"")->write(url)->write("\"")->crlf();
 
   if ((strlen(host) == 0) or (strlen(url) == 0))
     return erg;
@@ -432,14 +415,14 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   strcpy(uri,host);
   uri[strlen(host)] = '/'; uri[strlen(host)+1] = '\0';
   strcpy(uri+strlen(host)+1,url);
-  writelog("Value Request to: \""+String(uri)+"\"");
+  TGLogging::get()->write("Value Request to: \"")->write(uri)->write("\"")->crlf();
 
   //TODO Hier brechen wir den Request aus Testzweocken noch ab
   return erg;
 
   HTTPClient *http = new HTTPClient;    //Declare object of class HTTPClient
 
-  writelog("Values: \""+String(values)+"\"\n");
+  TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
 
   http->begin(url);   //Specify request destination
 
@@ -452,9 +435,9 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
       httpCode = http->POST(values);
     }
 
-  writelog("httpCode:"+String(httpCode)+":\n");
+  TGLogging::get()->write("httpCode:")->write(httpCode)->crlf();
   if (httpCode < 0)
-    writelog("[HTTP] ... failed, error: "+http->errorToString(httpCode)+"\n");
+    TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http->errorToString(httpCode))->crlf();
 
   if (t_withresponse)
     {
@@ -509,7 +492,7 @@ void TGDevice::deviceLoop()
 
   if ((sensors != NULL) and sensors->hasMembers())
     {
-      //writelog("in sensor Loop");
+      //TGLogging::get()->write("in sensor Loop");
       boolean needReporting = false;
       if (timeTest(lastMessTime,messTime))
         {
@@ -529,7 +512,7 @@ void TGDevice::deviceLoop()
 
   if ((actors != NULL) and actors->hasMembers())
     {
-      //writelog("in actors Loop");
+      //TGLogging::get()->write("in actors Loop");
       if (timeTest(lastActorTime,actorTime))
         {
           boolean needReporting = actors->action();
@@ -542,10 +525,10 @@ void TGDevice::deviceLoop()
         }
     }
 
-  //writelog("doLoop");
+  //TGLogging::get()->write("doLoop");
   doLoop();
 
-  //writelog("delay");
+  //TGLogging::get()->write("delay");
   delay(loopDelayMS);
 }
 
