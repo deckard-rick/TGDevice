@@ -35,7 +35,7 @@ class TtgDeviceConfig
     void getValue(const char* fieldname, char* t_out);
     int getValueI(const char* fieldname);
     float getValueD(const char* fieldname);
-    void json(boolean withAll, TGCharbuffer outbuffer);
+    void json(boolean withAll, TGCharbuffer* outbuffer);
     void putJson(const String& json);
     int getEEPROMSize();
     void readEEPROM();

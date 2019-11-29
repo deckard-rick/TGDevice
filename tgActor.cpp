@@ -123,9 +123,9 @@ void TtgActorsList::setEndtime(char* t_id, int t_endtime)
       element->endTime = t_endtime;  //activation via automatic timer (max after actionTime [s]
 }
 
-void TtgActorsList::json(boolean t_angefordert, TGCharbuffer outbuffer)
+void TtgActorsList::json(boolean t_angefordert, TGCharbuffer* outbuffer)
 {
-  outbuffer.add("\"actors\" : { ");
+  outbuffer->add("\"actors\" : { ");
 
   char cbuf[10];
   boolean first = true;
@@ -134,24 +134,24 @@ void TtgActorsList::json(boolean t_angefordert, TGCharbuffer outbuffer)
     if (t_angefordert or element->changed)
       {
         if (!first)
-          outbuffer.add(", ");
+          outbuffer->add(", ");
         first = false;
 
-        outbuffer.add(jsonActors1);
-        sprintf(cbuf,"%d",i); outbuffer.replace("i",cbuf);
-        outbuffer.replace("id",element->id);
-        outbuffer.replace("status",element->status);
+        outbuffer->add(jsonActors1);
+        sprintf(cbuf,"%d",i); outbuffer->replace("i",cbuf);
+        outbuffer->replace("id",element->id);
+        outbuffer->replace("status",element->status);
 
-        outbuffer.add(jsonActors2);
-        sprintf(cbuf,"%d",element->autoStart); outbuffer.replace("autostart",cbuf);
-        sprintf(cbuf,"%d",element->autoEnd); outbuffer.replace("autoend",cbuf);
-        sprintf(cbuf,"%d",element->endTime); outbuffer.replace("endtime",cbuf);
+        outbuffer->add(jsonActors2);
+        sprintf(cbuf,"%d",element->autoStart); outbuffer->replace("autostart",cbuf);
+        sprintf(cbuf,"%d",element->autoEnd); outbuffer->replace("autoend",cbuf);
+        sprintf(cbuf,"%d",element->endTime); outbuffer->replace("endtime",cbuf);
 
         if (!t_angefordert) element->changed = false;
         ++i;
       }
 
-  outbuffer.add("}");
+  outbuffer->add("}");
 }
 
 void TtgActorsList::html(TGCharbuffer* outbuffer)

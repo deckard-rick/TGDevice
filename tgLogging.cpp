@@ -38,6 +38,7 @@ TGLogging* TGLogging::write(const char* out)
 {
   if (modus == 'S')
     Serial.print(out);
+  yield();
   return this;
 }
 

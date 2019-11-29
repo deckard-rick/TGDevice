@@ -13,12 +13,14 @@ void TGCharbuffer::clear()
 void TGCharbuffer::add(const char* value)
 {
   if (outpos+strlen(value) >= TGCharbuffer::maxOutBuffer)
-    TGLogging::get()->write("TGCharbuffer::add Puffer zu klein")->crlf();
+    TGLogging::get()->write("TGCharbuffer::add Puffer zu klein (")->write(value)->write(")")->crlf();
   else
     {
       strcpy(outbuffer+outpos,value);
       replacepos = outpos;
       outpos += strlen(value);
+      //TGLogging::get()->write("TGCharbuffer::add(")->write(outpos)->write("):")->crlf();
+      //TGLogging::get()->write(outbuffer)->crlf();
     }
 }
 
@@ -40,7 +42,14 @@ void TGCharbuffer::replace(const char* id, const char* value)
 {
   int modus = 0;
   int lpos = 0; int rpos = 0;
-  TGLogging::get()->write("replacePos:")->write(replacepos)->crlf();
+
+  //führende Spaces weg
+  int solllen = strlen(value);
+  int valStart=0;
+  while ((valStart < solllen) and (value[valStart] == ' ')) ++valStart;
+  solllen -= valStart;
+
+  //TGLogging::get()->write("replacePos:")->write(replacepos)->crlf();
   for(int i=replacepos; i < strlen(outbuffer); ++i)
     {
       if ((modus == 0) and (outbuffer[i] =='#')) //looking for starting #
@@ -52,14 +61,17 @@ void TGCharbuffer::replace(const char* id, const char* value)
         ;
       else if ((modus == 1) and (outbuffer[i] ==  '#')) //id founds
         {
-          int solllen = strlen(value);
+          //012345678
+          //...#...#
           int istlen = i - lpos + 1;
+
           bool error = false;
           if (solllen < istlen)
-            //for(int j=i; j < strlen(outbuffer)+1; ++j)
-            //  outbuffer[j-(istlen-solllen)] = outbuffer[j];
-            //Das rechte # (Pos i) wird vorgezogen.
-            strcpy(outbuffer+i-(istlen-solllen),outbuffer+i);
+            {
+              //Zum linken # (Pos lpos) wird vorgezogen.
+              strcpy(outbuffer+lpos, outbuffer+lpos+(istlen-solllen));
+              outpos -= istlen-solllen;
+            }
           else if (solllen > istlen)
             if (strlen(outbuffer)+(solllen-istlen) > TGCharbuffer::maxOutBuffer)
               {
@@ -68,17 +80,13 @@ void TGCharbuffer::replace(const char* id, const char* value)
               }
             else
               {
-                //TGLogging::get()->write("i:")->write(i)->crlf();
-                //TGLogging::get()->write("1:")->write(outbuffer)->crlf();
                 for(int j=strlen(outbuffer)+1; j > i; --j)
                   outbuffer[j+(solllen-istlen)] = outbuffer[j];
-                //TGLogging::get()->write("2:")->write(outbuffer)->crlf();
+                outpos += solllen-istlen;
               }
-          //for (int j=0; j < strlen(value); ++j)
-            //outbuffer[lpos+j] = value[j];
           if (!error)
-            strncpy(outbuffer+lpos,value,strlen(value));
-          i = lpos;
+            strncpy(outbuffer+lpos,value+valStart,solllen);
+          i = lpos+solllen-1;
           modus = 0;
         }
       //012345678

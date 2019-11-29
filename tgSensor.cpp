@@ -4,7 +4,7 @@
 char htmlSensor1[] = "<table border=\"1\"><tr><th>ID</th>";
 char htmlSensor2[] = "<th>#id#</th>";
 char htmlSensor3[] = "</tr><tr><td>Value</td>";
-char htmlSensor4[] = "<td>#value</td>";
+char htmlSensor4[] = "<td>#value#</td>";
 char htmlSensor5[] = "</tr><tr><td>[s]</td>";
 char htmlSensor6[] = "<td><small>#sec#</small></td>";
 char htmlSensor7[] = "</tr></table>";
@@ -12,19 +12,15 @@ char htmlSensor7[] = "</tr></table>";
 char jsonSensors1[] = "\"S#i#\" : {\"id\" : \"#id#\",";
 char jsonSensors2[] = "\"sec\" : \"#sec#\", \"value\" : \"#value#\"} ";
 
-
-float TtgSensor::doGetMessValue()
+void TtgSensor::doGetMessValue(float* pvalue)
 {
-  return 0;
+  *pvalue = 0.0;
 }
 
 void TtgSensor::messWert()
 {
   //TGLogging::get()->write("TtgSensor::messWert")->crlf();
-  newValue = doGetMessValue();
-
-  //TGLogging::get()->write("newValue:")->write(newValue)->crlf();
-  //TGLogging::get()->write("pdelta:")->write(*pdelta)->crlf();
+  doGetMessValue(&newValue);
 
   if (abs(newValue - value) > *pdelta)
     changed = true;
@@ -54,13 +50,16 @@ void TtgSensorsList::add(TtgSensor* value)
 
 boolean TtgSensorsList::messWerte()
 {
-  TGLogging::get()->write("TtgSensorsList::messWerte")->crlf();
   boolean needReporting = false;
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
       element->messWert();
       needReporting = needReporting or element->changed;
+      //https://forum.arduino.cc/index.php?topic=442570.0
+      yield();
     }
+
+  TGLogging::get()->crlf();
   return needReporting;
 }
 
@@ -78,9 +77,9 @@ boolean TtgSensorsList::checkReporting(int t_reportTime)
     return needReporting;
 }
 
-void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer outbuffer)
+void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer* outbuffer)
 {
-  outbuffer.add("\"values\" : { ");
+  outbuffer->add("\"values\" : { ");
 
   boolean first = true;
   long now = millis();
@@ -91,17 +90,17 @@ void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer outbuffer)
     if (t_angefordert or element->changed) //Die Reported werden müssen, werden zuvor auf changed gesetzt
       {
         if (!first)
-          outbuffer.add(", ");
+          outbuffer->add(", ");
         first = false;
 
-        outbuffer.add(jsonSensors1);
-        sprintf(cbuf,"%d",i); outbuffer.replace("i",cbuf);
-        outbuffer.replace("id",element->id);
+        outbuffer->add(jsonSensors1);
+        sprintf(cbuf,"%d",i); outbuffer->replace("i",cbuf);
+        outbuffer->replace("id",element->id);
 
         long sec = (now - element->messTime) / 1000;
-        outbuffer.add(jsonSensors2);
-        sprintf(cbuf,"%d",sec); outbuffer.replace("sec",cbuf);
-        sprintf(cbuf,"%7.2f",element->value); outbuffer.replace("value",cbuf);
+        outbuffer->add(jsonSensors2);
+        sprintf(cbuf,"%d",sec); outbuffer->replace("sec",cbuf);
+        sprintf(cbuf,"%7.2f",element->value); outbuffer->replace("value",cbuf);
 
         if (!t_angefordert)
           {
@@ -111,7 +110,7 @@ void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer outbuffer)
         i++;
       }
 
-  outbuffer.add("}");
+  outbuffer->add("}");
 }
 
 void TtgSensorsList::html(TGCharbuffer* outbuffer)
@@ -119,24 +118,29 @@ void TtgSensorsList::html(TGCharbuffer* outbuffer)
   outbuffer->add(htmlSensor1);
 
   int now = millis();
-
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
        outbuffer->add(htmlSensor2);
        outbuffer->replace("id",element->id);
+       yield();
     }
+
   outbuffer->add(htmlSensor3);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
     outbuffer->add(htmlSensor4);
     outbuffer->replace("value",element->value);
+    yield();
    }
+
   outbuffer->add(htmlSensor5);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
       int sec = (now - element->messTime) / 1000;
       outbuffer->add(htmlSensor6);
       outbuffer->replace("sec",sec);
+      yield();
     }
+
   outbuffer->add(htmlSensor7);
 }

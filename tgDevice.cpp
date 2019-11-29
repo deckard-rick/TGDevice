@@ -242,13 +242,11 @@ void TGDevice::htmlFooter()
     outbuffer.add(htmlFooter2);
   if ((actors != NULL) and (actors->hasMembers()))
       outbuffer.add(htmlFooter3);
- outbuffer.add(htmlFooter4);
+  outbuffer.add(htmlFooter4);
 }
 
 void TGDevice::serverOnDashboard()
 {
-  TGLogging::get()->write("serverOnDashboard")->crlf();
-
   htmlHeader();
   outbuffer.add(htmlDashboard);
   if (sensors != NULL)
@@ -256,7 +254,6 @@ void TGDevice::serverOnDashboard()
   if (actors != NULL)
     actors->html(&outbuffer);
   htmlFooter();
-
   server->send(200, "text/html", outbuffer.getout());
 }
 
@@ -317,7 +314,7 @@ void TGDevice::serverOnGetConfig()
 
   jsonHeader();
   outbuffer.add(", ");
-  deviceconfig->json(all,outbuffer);
+  deviceconfig->json(all,&outbuffer);
   outbuffer.add(" }");
 
   server->send(200, "application/json", outbuffer.getout());
@@ -334,7 +331,7 @@ void TGDevice::serverOnPutConfig()
 
   jsonHeader();
   outbuffer.add(", ");
-  deviceconfig->json(false,outbuffer);
+  deviceconfig->json(false,&outbuffer);
   outbuffer.add(" }");
 
   server->send(200, "application/json", outbuffer.getout());
@@ -345,7 +342,7 @@ void TGDevice::jsonSensors(const boolean t_angefordert)
   TGLogging::get()->write("jsonSensors")->crlf();
   jsonHeader();
   outbuffer.add(", ");
-  sensors->json(t_angefordert,outbuffer);
+  sensors->json(t_angefordert,&outbuffer);
   outbuffer.add(" }");
 }
 
@@ -360,7 +357,7 @@ void TGDevice::jsonActors(const boolean t_angefordert)
 {
   jsonHeader();
   outbuffer.add(", ");
-  actors->json(t_angefordert,outbuffer);
+  actors->json(t_angefordert,&outbuffer);
   outbuffer.add(" }");
 }
 
@@ -492,7 +489,6 @@ void TGDevice::deviceLoop()
 
   if ((sensors != NULL) and sensors->hasMembers())
     {
-      //TGLogging::get()->write("in sensor Loop");
       boolean needReporting = false;
       if (timeTest(lastMessTime,messTime))
         {
@@ -512,7 +508,6 @@ void TGDevice::deviceLoop()
 
   if ((actors != NULL) and actors->hasMembers())
     {
-      //TGLogging::get()->write("in actors Loop");
       if (timeTest(lastActorTime,actorTime))
         {
           boolean needReporting = actors->action();

@@ -2,7 +2,7 @@
 #include <tgLogging.hpp>
 
 char htmlForm1[] = "<h2>Konfiguration</h2><form action=\"saveconfig\" method=\"POST\">";
-char htmlForm2[] = "<label>#fieldname#</label><input type=\"text\" name=\"#fieldname#\"  size=#size# value=\"#value\"/><br/>#description#<br/><br/>";
+char htmlForm2[] = "<label>#fieldname#</label><input type=\"text\" name=\"#fieldname#\" size=#size# value=\"#value#\"/><br/>#description#<br/><br/>";
 char htmlForm3[] =  "<button type=\"submit\" name=\"action\">Werte &auml;ndern</button></form>";
 char htmlForm4[] =  "<form action=\"writeconfig\"><button type=\"submit\" name=\"action\">Config festschreiben</button></form>";
 
@@ -75,12 +75,12 @@ void TtgDeviceConfig::getValue(const char* fieldname, char* t_out)
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
     if (i->typ == 'S')
-      t_out = i->psval;
+      strcpy(t_out,i->psval);
     else if (i->typ == 'I')
-      sprintf(t_out,"%d",i->pival);
+      sprintf(t_out,"%d",*(i->pival));
     else if (i->typ == 'F')
-      sprintf(t_out,"%7.sf",i->pfval);
-  TGLogging::get()->write ("configGetValue(")->write(fieldname)->write("):")->write(t_out)->crlf();
+      sprintf(t_out,"%7.2f",*(i->pfval));
+  //TGLogging::get()->write ("configGetValue(")->write(fieldname)->write("):")->write(t_out)->crlf();
 }
 
 int TtgDeviceConfig::getValueI(const char* fieldname)
@@ -124,9 +124,9 @@ void TtgDeviceConfig::setValue(const char* fieldname, const char* value)
      sscanf(value,"%f",i->pfval);
 }
 
-void TtgDeviceConfig::json(boolean all, TGCharbuffer outbuffer)
+void TtgDeviceConfig::json(boolean all, TGCharbuffer* outbuffer)
 {
-  outbuffer.add("\"configs\" : { ");
+  outbuffer->add("\"configs\" : { ");
 
   boolean first = true;
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
@@ -134,17 +134,17 @@ void TtgDeviceConfig::json(boolean all, TGCharbuffer outbuffer)
       if (all || !i->secure)
         {
           if (!first)
-            outbuffer.add(", ");
+            outbuffer->add(", ");
           first = false;
 
-          outbuffer.add(jsonConfig1);
-          outbuffer.replace("fieldname",i->fieldname);
+          outbuffer->add(jsonConfig1);
+          outbuffer->replace("fieldname",i->fieldname);
           char value[128];
           getValue(i->fieldname,value);
-          outbuffer.replace("value",value);
+          outbuffer->replace("value",value);
         }
     }
-  outbuffer.add("}");
+  outbuffer->add("}");
 }
 
 void TtgDeviceConfig::putJson(const String& json)

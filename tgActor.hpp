@@ -34,7 +34,7 @@ class TtgActorsList
     boolean hasMembers();
     TtgActor* add(TtgActor *t_value);
     boolean action();
-    void json(const boolean t_angefordert, TGCharbuffer outbuffer);
+    void json(const boolean t_angefordert, TGCharbuffer* outbuffer);
     void setStatus(char* t_id, char t_status);
     void setEndtime(char* t_id, int t_endtime);
     virtual void html(TGCharbuffer* outbuffer);
