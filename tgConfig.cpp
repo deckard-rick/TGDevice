@@ -113,7 +113,6 @@ float TtgDeviceConfig::getValueD(const char* fieldname)
 
 void TtgDeviceConfig::setValue(const char* fieldname, const char* value)
 {
-  TGLogging::get()->write ("setValue(")->write(fieldname)->write("):")->write(value)->crlf();
   TtgConfConfig* i = getFieldElement(fieldname);
   if (i != NULL)
     if (i->typ == 'S')
@@ -292,8 +291,8 @@ void TtgDeviceConfig::htmlForm(TGCharbuffer* outbuffer)
       outbuffer->add(htmlForm2);
       outbuffer->replace("fieldname",i->fieldname);
       sprintf(value,"%d",i->groesse); outbuffer->replace("size",value);
-      getValue(i->fieldname,value);   outbuffer->replace("value",value);
       outbuffer->replace("description",i->description);
+      getValue(i->fieldname,value);   outbuffer->replace("value",value);
     }
   outbuffer->add(htmlForm3);
   outbuffer->add(htmlForm4);

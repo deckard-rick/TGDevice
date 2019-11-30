@@ -10,6 +10,7 @@ class TGCharbuffer
     void replace(const char* id, const char* value);
     void replace(const char* id, const int ivalue);
     void replace(const char* id, const float fvalue);
+    void replace(const char* id, const long unsigned int ivalue);
   protected:
   private:
     static const int maxOutBuffer = 2048;

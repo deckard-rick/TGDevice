@@ -22,11 +22,12 @@ char htmlHeader1[] = "<html><body><h1>Device ID:#deviceid# Version(#deviceversio
 char htmlFooter1[] = "<p>[<a href=\"/\">Main</a>]</br>[<a href=\"/config\">Configuration</a>][<a href=\"/getconfig\">Configuration (json)</a>]";
 char htmlFooter2[] = "[<a href=\"/getvalues\">Values (json)</a>]";
 char htmlFooter3[] = "[<a href=\"/getactors\">Actors (json)</a>]";
-char htmlFooter4[] = "</p><p><small>Copyright Andreas Tengicki 2018-, NO COMMERCIAL USE</small></p></body></html>";
+char htmlFooter4[] = "</p><p><small>active since #value#ms.<br/>";
+char htmlFooter5[] = "Copyright Andreas Tengicki 2018-, NO COMMERCIAL USE</small></p></body></html>";
 
 char htmlDashboard[] = "<h2>Dashboard</h2>";
 
-char jsonHeader1[] = "{ \"Version\": \"#deviceversion#\", \"deviceid\": \"#deviceid#\"";
+char jsonHeader1[] = "{ \"Version\": \"#deviceversion#\", \"deviceid\": \"#deviceid#\", \"millis\": \"#millis#\"";
 
 TGCharbuffer outbuffer;
 
@@ -167,10 +168,10 @@ void TGDevice::doHello()
 void TGDevice::doRegister()
 {
   //Default configuration parameter this base device is using
-  deviceconfig->addConfig("deviceid",'S',16,false,"Gerätename",deviceid,NULL,NULL);
+  deviceconfig->addConfig("deviceid",'S',16,false,"Ger&auml;tename",deviceid,NULL,NULL);
   deviceconfig->addConfig("wifiSSID",'S',16,true,"Netzwerkkennung",wifiSSID,NULL,NULL);
   deviceconfig->addConfig("wifiPWD",'S',32,true,"Netzwerkpasswort",wifiPWD,NULL,NULL);
-  deviceconfig->addConfig("host",'S',32,false,"Host für Konfig, Daten und Dashboard",host,NULL,NULL);
+  deviceconfig->addConfig("host",'S',32,false,"Host f&uuml;r Konfig, Daten und Dashboard",host,NULL,NULL);
   deviceconfig->addConfig("loopDelay",'I',0,false,"[ms] Pause des Loops",NULL,&loopDelayMS,NULL);
 
   //if timer is active server page which delivers time in secs
@@ -181,7 +182,7 @@ void TGDevice::doRegister()
   if ((sensors != NULL) and sensors->hasMembers())
     {
       deviceconfig->addConfig("messtime",'I',0,false,"alle wieviel Sekunden gemessen wird",NULL,&messTime,NULL);
-      deviceconfig->addConfig("reporttime",'I',0,false,"nach wieviel Sekunden der Wert auch ohne Änderung über Delta reported wird",NULL,&reportTime,NULL);
+      deviceconfig->addConfig("reporttime",'I',0,false,"nach wieviel Sekunden der Wert auch ohne &Auml;nderung &uuml;ber Delta reported wird",NULL,&reportTime,NULL);
       deviceconfig->addConfig("urlsensordata",'S',32,false,"Webseite an die die Werte reported werden",urlsensordata,NULL,NULL);
     }
 
@@ -243,6 +244,8 @@ void TGDevice::htmlFooter()
   if ((actors != NULL) and (actors->hasMembers()))
       outbuffer.add(htmlFooter3);
   outbuffer.add(htmlFooter4);
+  outbuffer.replace("value",millis());
+  outbuffer.add(htmlFooter5);
 }
 
 void TGDevice::serverOnDashboard()
@@ -266,7 +269,6 @@ void TGDevice::htmlConfig()
 
 void TGDevice::serverOnConfig()
 {
-  TGLogging::get()->write("serverOnConfig")->crlf();
   htmlConfig();
   server->send(200, "text/html", outbuffer.getout());
 }
@@ -297,11 +299,11 @@ void TGDevice::serverOnWriteConfig()
 
 void TGDevice::jsonHeader()
 {
-  TGLogging::get()->write("jsonHeader")->crlf();
   outbuffer.clear();
   outbuffer.add(jsonHeader1);
   outbuffer.replace("deviceid",deviceid);
   outbuffer.replace("deviceversion",deviceconfig->deviceversion);
+  outbuffer.replace("millis",millis());
 }
 
 void TGDevice::serverOnGetConfig()
@@ -469,8 +471,6 @@ void TGDevice::timer()
     return;
 
   int ms = millis();
-  mainTimeMS += (ms - lastTimeMS);
-  maintime = mainTimeMS / 1000;
   if ((lastTimeMS = -1) or (maintime > 86399) or (lastTimeMS > ms))
     {
       httpRequest(urlgettimesec, "", true, outbuffer.getout());
@@ -478,6 +478,9 @@ void TGDevice::timer()
       sscanf(outbuffer.getout(),"%d",&maintime);
       mainTimeMS = maintime * 1000;
     }
+  else
+    mainTimeMS += (ms - lastTimeMS);
+  maintime = mainTimeMS / 1000;
   lastTimeMS = ms;
 }
 

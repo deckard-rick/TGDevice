@@ -24,6 +24,13 @@ void TGCharbuffer::add(const char* value)
     }
 }
 
+void TGCharbuffer::replace(const char* id, const long unsigned int ivalue)
+{
+  char value[20];
+  sprintf(value,"%d",ivalue);
+  replace(id,value);
+}
+
 void TGCharbuffer::replace(const char* id, const int ivalue)
 {
   char value[20];
