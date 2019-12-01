@@ -184,30 +184,34 @@ void TtgDeviceConfig::putJson(const String& json)
 
 int TtgDeviceConfig::getEEPROMSize()
 {
-  int erg = 0;
+  if (eepromBufferSize > 0)
+    return eepromBufferSize;
+
+  eepromBufferSize = strlen(deviceversion);
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
     if (i->typ == 'S')
-      erg += i->groesse;
+      eepromBufferSize += i->groesse;
     else if (i->typ == 'I')
-      erg += sizeof(int);
+      eepromBufferSize += sizeof(int);
     else if (i->typ == 'F')
-      erg += sizeof(float);
+      eepromBufferSize += sizeof(float);
     else
       ;
-  TGLogging::get()->write("EEPROM-Size:")->write(erg)->crlf();
-  return erg;
+  return eepromBufferSize;
 }
 
 //https://playground.arduino.cc/Code/EEPROMLoadAndSaveSettings
 void TtgDeviceConfig::readEEPROM()
 {
-  TGLogging::get()->write("load Config")->crlf();
+  TGLogging::get()->write("readEEPROM: ")->crlf();
+  //initialize EEPROM for read/write configuration for using after reboot
+  EEPROM.begin(getEEPROMSize());
 
   boolean valid = true;
-  unsigned int i=0;
+  int i=0;
   for (int j=0; j < strlen(deviceversion); j++)
     {
-      if (EEPROM.read(configStart + i) != deviceversion[j])
+      if (EEPROM.read(i) != deviceversion[j])
         {
           valid = false;
           break;
@@ -216,8 +220,6 @@ void TtgDeviceConfig::readEEPROM()
     }
   if (valid)
     {
-      //for (unsigned int i=0; i<sizeof(configs); i++)
-      //  *((char*)&configs + i) = EEPROM.read(configStart + i);
       for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)
         {
           if (elem->typ == 'S')
@@ -225,59 +227,60 @@ void TtgDeviceConfig::readEEPROM()
               {
                 //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
                 //Und wenn ich für den String nicht genug Platz habe, dann scheppert es auch!!
-                elem->psval[j] = EEPROM.read(configStart + i);
+                elem->psval[j] = EEPROM.read(i);
                 i++;
               }
           else if (elem->typ == 'I')
             for(unsigned int j=0; j<sizeof(int); j++)
               {
-                *((char*)(elem->pival + j)) = EEPROM.read(configStart + i);
+                *(((char*)(elem->pival))+j) = EEPROM.read(i);
                 i++;
               }
           else if (elem->typ == 'F')
             for(unsigned int j=0; j<sizeof(float); j++)
               {
-                *((char*)(elem->pfval + j)) = EEPROM.read(configStart + i);
+                *(((char*)(elem->pfval))+j) = EEPROM.read(i);
                 i++;
               }
-          //+getValue(elem->fieldname)
-          //TGLogging::get()->write("readEEPROM:")->write(elem->fieldname)->write(" => ")->crlf();
         }
     }
+  EEPROM.end();
 }
 
 void TtgDeviceConfig::writeEEPROM()
 {
-  TGLogging::get()->write("write Config")->crlf();
+  TGLogging::get()->write("writeEEPROM: ")->crlf();
+  EEPROM.begin(getEEPROMSize());
 
-  //for (unsigned int i=0; i<sizeof(configs); i++)
-  //  EEPROM.write(configStart + i, *((char*)&configs + i));
-  unsigned int i=0;
+  int i=0;
   for(unsigned int j=0; j < strlen(deviceversion); j++)
     {
-      EEPROM.write(configStart + i, deviceversion[j]);
+      EEPROM.write(i, deviceversion[j]);
       i++;
     }
   for (TtgConfConfig* elem = firstelement; elem != NULL; elem = elem->next)
-    if (elem->typ == 'S')
-      for(unsigned int j=0; j<elem->groesse; j++)
-        { //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
-          EEPROM.write(configStart + i, elem->psval[j]) ;
-          i++;
-        }
-    else if (elem->typ == 'I')
-      for(unsigned int j=0; j<sizeof(int); j++)
-        {
-          EEPROM.write(configStart + i, *((char*)(elem->pival + j)));
-          i++;
-        }
-    else if (elem->typ == 'F')
-      for(unsigned int j=0; j<sizeof(float); j++)
-        {
-          EEPROM.write(configStart + i, *((char*)(elem->pfval + j)));
-          i++;
-        }
+    {
+      if (elem->typ == 'S')
+        for(unsigned int j=0; j<elem->groesse; j++)
+          { //TGMARK TODO ich darf nicht länger schreiben als bis zum \0 bzw muss das danach auch \0 sein.
+            EEPROM.write(i, elem->psval[j]) ;
+            i++;
+          }
+      else if (elem->typ == 'I')
+        for(unsigned int j=0; j<sizeof(int); j++)
+          {
+            EEPROM.write(i, *(((char*)(elem->pival))+j));
+            i++;
+          }
+      else if (elem->typ == 'F')
+        for(unsigned int j=0; j<sizeof(float); j++)
+          {
+            EEPROM.write(i, *(((char*)(elem->pfval))+j));
+            i++;
+          }
+      }
   EEPROM.commit();
+  EEPROM.end();
 }
 
 void TtgDeviceConfig::htmlForm(TGCharbuffer* outbuffer)

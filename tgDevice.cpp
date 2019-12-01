@@ -88,21 +88,13 @@ void TGDevice::deviceSetup()
   delay(5000);
 
   //derived classes can print a hello message after boot to logging
-  TGLogging::get()->write("doHello")->crlf();
   doHello();
 
   //register all config-parameter, sensors and actors with derived classe
-  TGLogging::get()->write("doRegister")->crlf();
   doRegister();
 
-  //initialize EEPROM for read/write configuration for using after reboot
-  TGLogging::get()->write("init EEPROM")->crlf();
-  EEPROM.begin(deviceconfig->getEEPROMSize());
-
-  //loas configuration from EEPROM if possible (else default values)
-  //TGLogging::get()->write("load configuration");
-  //
-  //deviceconfig->readEEPROM();
+  //load configuration from EEPROM if possible (else default values)
+  deviceconfig->readEEPROM();
 
   //calculation in the configuration after changed, for example timetables
   TGLogging::get()->write("doAfterConfigChange")->crlf();
@@ -352,6 +344,10 @@ void TGDevice::serverOnGetValues()
 {
   TGLogging::get()->write("serverOnGetValues")->crlf();
   jsonSensors(true);
+
+  TGLogging::get()->write("load configuration");
+  deviceconfig->readEEPROM();
+
   server->send(200, "application/json", outbuffer.getout());
 }
 
@@ -523,7 +519,7 @@ void TGDevice::deviceLoop()
         }
     }
 
-  //TGLogging::get()->write("doLoop");
+  //TGLogging::get()->write("doLoop")->write(loopDelayMS)->crlf();
   doLoop();
 
   //TGLogging::get()->write("delay");

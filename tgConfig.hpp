@@ -5,8 +5,6 @@
 #include <EEPROM.h>
 #include <tgCharbuffer.hpp>
 
-#define configStart 32
-
 class TtgConfConfig
 {
   public:
@@ -43,6 +41,7 @@ class TtgDeviceConfig
     void htmlForm(TGCharbuffer* outbuffer);
   protected:
   private:
+    int eepromBufferSize = -1;
     TtgConfConfig *firstelement = NULL, *lastelement = NULL;
     TtgConfConfig* getFieldElement(const char* fieldname);
 };
