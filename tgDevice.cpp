@@ -345,9 +345,6 @@ void TGDevice::serverOnGetValues()
   TGLogging::get()->write("serverOnGetValues")->crlf();
   jsonSensors(true);
 
-  TGLogging::get()->write("load configuration");
-  deviceconfig->readEEPROM();
-
   server->send(200, "application/json", outbuffer.getout());
 }
 
@@ -411,9 +408,6 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   uri[strlen(host)] = '/'; uri[strlen(host)+1] = '\0';
   strcpy(uri+strlen(host)+1,url);
   TGLogging::get()->write("Value Request to: \"")->write(uri)->write("\"")->crlf();
-
-  //TODO Hier brechen wir den Request aus Testzweocken noch ab
-  return erg;
 
   HTTPClient *http = new HTTPClient;    //Declare object of class HTTPClient
 
