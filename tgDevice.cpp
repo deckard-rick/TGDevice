@@ -409,24 +409,28 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   strcpy(uri+strlen(host)+1,url);
   TGLogging::get()->write("Value Request to: \"")->write(uri)->write("\"")->crlf();
 
-  HTTPClient *http = new HTTPClient;    //Declare object of class HTTPClient
+  HTTPClient http;    //Declare object of class HTTPClient
 
   TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
 
-  http->begin(url);   //Specify request destination
+  http.begin(String(uri));   //Specify request destination
+  yield();
 
   int httpCode = 0;
-  if (strlen(uri) == 0)
-    httpCode = http->GET();
+  if (strlen(values) == 0)
+    httpCode = http.GET();
   else
     {
-      http->addHeader("Content-Type", "application/json");  //Specify content-type header
-      httpCode = http->POST(values);
+      TGLogging::get()->write("POST")->crlf();
+      http.addHeader("Content-Type", "application/json");  //Specify content-type header
+      httpCode = http.POST(String(values));
     }
+  yield();
 
   TGLogging::get()->write("httpCode:")->write(httpCode)->crlf();
   if (httpCode < 0)
-    TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http->errorToString(httpCode))->crlf();
+    TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http.errorToString(httpCode))->crlf();
+  yield();
 
   if (t_withresponse)
     {
@@ -434,16 +438,18 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
       //  getString is working with A StringStream and need to much resorves,
       // we can get the answert directly from the stream
       int i = 0;
-      WiFiClient* stream = http->getStreamPtr();
+      WiFiClient* stream = http.getStreamPtr();
       while(stream->available() > 0)
         {
           *(response+i) = stream->read();
           ++i;
         }
       *(response+i) = '\0';
+      TGLogging::get()->write("response:")->write(response)->crlf();
     }
+  yield();
 
-  http->end();  //Close connection
+  http.end();  //Close connection
 
   erg = true;
 
@@ -485,6 +491,7 @@ void TGDevice::deviceLoop()
       boolean needReporting = false;
       if (timeTest(lastMessTime,messTime))
         {
+          TGLogging::get()->write("deviceLoop: messWerte")->crlf();
           needReporting = sensors->messWerte();
           lastMessTime = millis();
         }
@@ -494,8 +501,11 @@ void TGDevice::deviceLoop()
       //Wegen der StringVerabeitung sollten wir aber prüfen ob was gesendet werden muss, bevor wir Strings bauen
       if (needReporting)
         {
+          TGLogging::get()->write("deviceLoop: reporting")->crlf();
           jsonSensors(false);
-          httpRequest(urlsensordata, outbuffer.getout(), false, NULL);
+          TGLogging::get()->write("deviceLoop: before httpRequest")->crlf();
+          char response[1024];
+          httpRequest(urlsensordata, outbuffer.getout(), true, response);
         }
     }
 
