@@ -130,7 +130,7 @@ void TtgDeviceConfig::json(boolean all, TGCharbuffer* outbuffer)
   boolean first = true;
   for (TtgConfConfig* i=firstelement; i != NULL; i=i->next)
     {
-      if (all || !i->secure)
+      if ((all || !i->secure) and (strcmp(i->fieldname,"deviceid") != 0)) //deviceID steht im Header
         {
           if (!first)
             outbuffer->add(", ");
