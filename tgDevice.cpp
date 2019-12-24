@@ -101,16 +101,41 @@ void TGDevice::deviceSetup()
   doAfterConfigChange();
 
   //establish WiFi connection
-  TGLogging::get()->write("WiFi: ")->write(wifiSSID)->write(" (")->write(wifiPWD)->write(")");
+  //TGLogging::get()->write("WiFi: ")->write(wifiSSID)->write(" (")->write(wifiPWD)->write(")");
+  TGLogging::get()->write("WiFi connect to: ")->write(wifiSSID);
+  int endtime = millis() + 30000;
   WiFi.begin(String(wifiSSID),String(wifiPWD));
   TGLogging::get()->write("[");
-  while (WiFi.status() != WL_CONNECTED)
+  int cnt = 25;
+  while ((WiFi.status() != WL_CONNECTED) and (millis() < endtime))
   {
     delay(250);
     TGLogging::get()->write(".");
+    ++cnt;
+    if (cnt % 50 == 0)
+      {
+        TGLogging::get()->crlf();
+        cnt = 0;
+      }
    }
   TGLogging::get()->write("]")->crlf();
-  TGLogging::get()->write("WiFi connected IP:")->write(WiFi.localIP().toString())->crlf();
+  if (WiFi.status() == WL_CONNECTED)
+    {
+      WiFi.setAutoReconnect(true); //damit er den erfolgreichen Aufbau wiederholt.
+      TGLogging::get()->write("WiFi connected IP:")->write(WiFi.localIP().toString())->crlf();
+    }
+  else
+    {
+      TGLogging::get()->write("WiFi NOT connected")->crlf();
+      WiFi.setAutoReconnect(false); //damit es nicht stört
+      if (WiFi.softAP("tgDevice001","11223344"))
+        TGLogging::get()->write("WiFi tgDevice001 startet IP:")->write(WiFi.softAPIP().toString())->crlf();
+      else
+        TGLogging::get()->write("Wifi access point NOT started.")->crlf();
+    }
+  //
+  WiFi.printDiag(Serial);
+
 
   //initialize http-Server
   TGLogging::get()->write("init Server")->crlf();
@@ -432,7 +457,7 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
     TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http.errorToString(httpCode))->crlf();
   yield();
 
-  if (t_withresponse)
+  if (t_withresponse and (httpCode >= 0))
     {
       //response = http->getString();          //Get the response payload
       //  getString is working with A StringStream and need to much resorves,
@@ -494,6 +519,9 @@ void TGDevice::deviceLoop()
           TGLogging::get()->write("deviceLoop: messWerte")->crlf();
           needReporting = sensors->messWerte();
           lastMessTime = millis();
+
+          //
+          WiFi.printDiag(Serial);
         }
 
       //Es können ja immer Werte auch ohne Messung in das repotTime Fenster rutschen, also immer prüfen
