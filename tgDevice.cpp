@@ -343,17 +343,26 @@ void TGDevice::serverOnPutConfig()
 {
   TGLogging::get()->write("serverOnPutConfig")->crlf();
 
-  //TODO json String/CharBuffer noch aus dem Request holen
-  String json;
-  deviceconfig->putJson(json);
-  doAfterConfigChange();
+  //https://techtutorialsx.com/2017/03/26/esp8266-webserver-accessing-the-body-of-a-http-request/
+  if (server->hasArg("plain"))
+    {
+      String json = server->arg("plain");
+      deviceconfig->putJson(json);
+      doAfterConfigChange();
 
-  jsonHeader();
-  outbuffer.add(", ");
-  deviceconfig->json(false,&outbuffer);
-  outbuffer.add(" }");
+      //if we set the values from outside, they need to save permamently
+      deviceconfig->writeEEPROM();
 
-  server->send(200, "application/json", outbuffer.getout());
+      //create the response
+      jsonHeader();
+      outbuffer.add(", ");
+      deviceconfig->json(false,&outbuffer);
+      outbuffer.add(" }");
+
+      server->send(200, "application/json", outbuffer.getout());
+    }
+  else
+    server->send(200, "text/plain", "NO DATA");
 }
 
 void TGDevice::jsonSensors(const boolean t_angefordert)

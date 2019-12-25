@@ -158,6 +158,7 @@ void TtgDeviceConfig::putJson(const String& json)
   String fieldname = "";
   String fieldvalue = "";
   char value[TtgConfConfig::maxValueLen] = "";
+  int valid = 0;
   for (int i=0; i < json.length(); i++)
     {
       char c = json[i];
@@ -166,19 +167,50 @@ void TtgDeviceConfig::putJson(const String& json)
       else if ((modus == 2) and (c == '"')) modus = 3;
       else if (modus == 2) fieldname += c;
       else if ((modus == 3) and (c == ':')) modus = 4;
-      else if (((modus == 2) or (modus == 4)) and (c == '{')) modus = 1;
+      else if (((modus == 2) or (modus == 4)) and (c == '{'))
+        {modus = 1; fieldname = ""; }
       else if ((modus == 4) and (c == '"')) modus = 5;
       else if ((modus == 5) and (c == '"'))
         {
-          getValue("DeviceID",value);
-          if ((fieldname == "DeviceID") and (fieldvalue != String(value)))
-            return;
-          //setValue(fieldname,fieldvalue);
+          TGLogging::get()->write("put:")->write(fieldname)->write(":")->write(fieldvalue)->crlf();
+          if (fieldname == "Version")
+            {
+              getValue("Version",value);
+              if (fieldvalue == String(deviceversion))
+                {
+                  ++valid;
+                  TGLogging::get()->write("valid Version")->crlf();
+                }
+              else
+              {
+                TGLogging::get()->write("INVALID Version:")->write(deviceversion)->crlf();
+                return;
+              }
+            }
+          else if (fieldname == "deviceid")
+            {
+              getValue("deviceid",value);
+              if (String(value) == fieldvalue)
+                {
+                  ++valid;
+                  TGLogging::get()->write("valid DeviceID")->crlf();
+                }
+              else
+              {
+                TGLogging::get()->write("INVALID DeviceID:")->write(value)->crlf();
+                return;
+              }
+            }
+          else if ((valid==2) && (fieldname.substring(1,4) != "wifi"))
+            {
+              setValue(fieldname.c_str(),fieldvalue.c_str());
+            }
           fieldname = "";
           fieldvalue = "";
           modus = 1;
         }
       else if (modus == 5) fieldvalue += c;
+      yield();
     }
 }
 
