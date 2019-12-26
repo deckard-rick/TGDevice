@@ -2,12 +2,9 @@
 *  Projekt TGDevice (Baseclasses/Framework for Arduino ESP8622 devices)
 *
 * lesson learned:
-* 1) delTime a time after a sensor value is invalid is without sense,
-*    because we measure all values every x seconds and then is there a new values
-*    if this value is incorrect we have to fix the device
+* 1) use yield, because not to run into the internal watchdog exception
 *
-* 2) we can work with an internal ID of the sensor and actor, there are unique
-*    as tupel with the deviceID. All other handling can be done on the web-system
+* 2) char* instead of String
 *
 * class TGDevice
 *
@@ -18,6 +15,7 @@
 #include <tgDevice.hpp>
 #include <tgLogging.hpp>
 
+/*Constants to create the header and footer of all html pages*/
 char htmlHeader1[] = "<html><body><h1>Device ID:#deviceid# Version(#deviceversion#)</h1>";
 char htmlFooter1[] = "<p>[<a href=\"/\">Main</a>]</br>[<a href=\"/config\">Configuration</a>][<a href=\"/getconfig\">Configuration (json)</a>]";
 char htmlFooter2[] = "[<a href=\"/getvalues\">Values (json)</a>]";
@@ -25,12 +23,21 @@ char htmlFooter3[] = "[<a href=\"/getactors\">Actors (json)</a>]";
 char htmlFooter4[] = "</p><p><small>active since #value#ms.<br/>";
 char htmlFooter5[] = "Copyright Andreas Tengicki 2018-, NO COMMERCIAL USE</small></p></body></html>";
 
+/* .. headline of the html Dashboard (Main-HTML-Page)*/
 char htmlDashboard[] = "<h2>Dashboard</h2>";
 
+/*.. same for json*/
 char jsonHeader1[] = "{ \"Version\": \"#deviceversion#\", \"deviceid\": \"#deviceid#\", \"millis\": \"#millis#\"";
 
+/* a buffer for creating the output (html, json etc..), works with char instead of String */
 TGCharbuffer outbuffer;
 
+/**
+ * true if millis() is sec after checkTime (or have an overflow)
+ * @param  checkTime lastCall of millis()
+ * @param  sec       sec to be passed
+ * @return           true/false, intervall is finished
+ */
 bool timeTest(int checkTime, int sec)
 {
   int ms = millis();
@@ -39,7 +46,7 @@ bool timeTest(int checkTime, int sec)
 
 /**
 * TGDevice constructor
-* param const String& t_deviceversion Version of the devices
+* @param const char* t_deviceversion Version of the devices
 *  stored cofiguration in the devices has to lost if the configuration
 *  changes the structure
 *  Also stored in device and not only in configuration for better access
@@ -52,9 +59,9 @@ TGDevice::TGDevice(const char* t_deviceversion)
 
 /**
 * public void registerSensorsList
-* param TGSensorsList *t_sensors list to register
+* @param TGSensorsList *t_sensors list to register
 *
-* registered the list of sensors, by this it is possible to use derives classes
+* registered the list of sensors, by this it is possible to use derived classes
 */
 void TGDevice::registerSensorsList(TtgSensorsList* t_sensors)
 {
@@ -63,9 +70,9 @@ void TGDevice::registerSensorsList(TtgSensorsList* t_sensors)
 
 /**
 * public void registerActorsList
-* param TGActorsList *t_actors list to register
+* @param TGActorsList *t_actors list to register
 *
-* registered the list of actors, by this it is possible to use derives classes
+* registered the list of actors, by this it is possible to use derived classes
 */
 void TGDevice::registerActorsList(TtgActorsList* t_actors)
 {
@@ -74,10 +81,6 @@ void TGDevice::registerActorsList(TtgActorsList* t_actors)
 
 /**
 * public void deviceSetup() called from the Arduino setup function
-*
-* TODO
-* * TimeOut for Wifi connectig
-* * establish as Server if WiFi Client is not posible
 */
 void TGDevice::deviceSetup()
 {
@@ -86,6 +89,7 @@ void TGDevice::deviceSetup()
 
   TGLogging::get()->write("wait 5s")->crlf();
   delay(5000);
+  TGLogging::get()->write("start initialisation")->crlf();
 
   //derived classes can print a hello message after boot to logging
   doHello();
@@ -97,7 +101,7 @@ void TGDevice::deviceSetup()
   deviceconfig->readEEPROM();
 
   //calculation in the configuration after changed, for example timetables
-  TGLogging::get()->write("doAfterConfigChange")->crlf();
+  //TGLogging::get()->write("doAfterConfigChange")->crlf();
   doAfterConfigChange();
 
   //establish WiFi connection
@@ -119,23 +123,24 @@ void TGDevice::deviceSetup()
       }
    }
   TGLogging::get()->write("]")->crlf();
+
+  //if connected activate auto-re-connect
   if (WiFi.status() == WL_CONNECTED)
     {
       WiFi.setAutoReconnect(true); //damit er den erfolgreichen Aufbau wiederholt.
       TGLogging::get()->write("WiFi connected IP:")->write(WiFi.localIP().toString())->crlf();
     }
-  else
+  else //if not connected, start as WiFi-access-point on default IP 192.168.4.1
     {
       TGLogging::get()->write("WiFi NOT connected")->crlf();
-      WiFi.setAutoReconnect(false); //damit es nicht stört
+      //stopping reconnecting of client mode, it makes trouble
+      WiFi.setAutoReconnect(false);
+      //starting server
       if (WiFi.softAP("tgDevice001","11223344"))
         TGLogging::get()->write("WiFi tgDevice001 startet IP:")->write(WiFi.softAPIP().toString())->crlf();
-      else
+      else //if not successfull write log
         TGLogging::get()->write("Wifi access point NOT started.")->crlf();
     }
-  //
-  WiFi.printDiag(Serial);
-
 
   //initialize http-Server
   TGLogging::get()->write("init Server")->crlf();
@@ -155,8 +160,7 @@ void TGDevice::deviceSetup()
       server->on("/setactor",std::bind(&TGDevice::serverOnSetActor, this));
     }
 
-  //do other setup work, for examples http-server here and sensors in derived class
-  TGLogging::get()->write("doSetup")->crlf();
+  //do other setup work, in derived class
   doSetup();
 
   //start http-Server
@@ -176,7 +180,6 @@ void TGDevice::deviceSetup()
 */
 void TGDevice::doHello()
 {
-  TGLogging::get()->write("start initialisation")->crlf();
 }
 
 /**
@@ -185,6 +188,7 @@ void TGDevice::doHello()
 void TGDevice::doRegister()
 {
   //Default configuration parameter this base device is using
+  //Parameter 5 is the description for the conifguration html page, it is in german
   deviceconfig->addConfig("deviceid",'S',16,false,"Ger&auml;tename",deviceid,NULL,NULL);
   deviceconfig->addConfig("wifiSSID",'S',16,true,"Netzwerkkennung",wifiSSID,NULL,NULL);
   deviceconfig->addConfig("wifiPWD",'S',32,true,"Netzwerkpasswort",wifiPWD,NULL,NULL);
@@ -195,7 +199,7 @@ void TGDevice::doRegister()
   if (timerActive)
     deviceconfig->addConfig("urlgettimesec",'S',32,false,"Webseite von der der Host die aktuellen Sekunden liefert",urlgettimesec,NULL,NULL);
 
-  //parameter needed for sensors handling is sensors are registered
+  //parameter needed for sensors handling if sensors are registered
   if ((sensors != NULL) and sensors->hasMembers())
     {
       deviceconfig->addConfig("messtime",'I',0,false,"alle wieviel Sekunden gemessen wird",NULL,&messTime,NULL);
@@ -203,7 +207,7 @@ void TGDevice::doRegister()
       deviceconfig->addConfig("urlsensordata",'S',32,false,"Webseite an die die Werte reported werden",urlsensordata,NULL,NULL);
     }
 
-  //parameter needed for actors handling is sensors are registered
+  //parameter needed for actors handling if actors are registered
   if ((actors != NULL) and actors->hasMembers())
     {
       deviceconfig->addConfig("actortime",'I',0,false,"Sekunden nach denen auf Auto-Aktion geprüft wird",NULL,&messTime,NULL);
@@ -265,6 +269,10 @@ void TGDevice::htmlFooter()
   outbuffer.add(htmlFooter5);
 }
 
+/**
+ * http server index page (/)
+ *   with the overview (dashboard)
+ */
 void TGDevice::serverOnDashboard()
 {
   htmlHeader();
@@ -277,6 +285,9 @@ void TGDevice::serverOnDashboard()
   server->send(200, "text/html", outbuffer.getout());
 }
 
+/**
+ * write html config form into outbuffer
+ */
 void TGDevice::htmlConfig()
 {
   htmlHeader();
@@ -284,15 +295,25 @@ void TGDevice::htmlConfig()
   htmlFooter();
 }
 
+/**
+ * http server html config form (/config)
+ */
 void TGDevice::serverOnConfig()
 {
   htmlConfig();
   server->send(200, "text/html", outbuffer.getout());
 }
 
+/**
+ * http server html save config form (/saveconfig)
+ */
 void TGDevice::serverOnSaveConfig()
 {
   TGLogging::get()->write("serverOnSaveConfig")->crlf();
+
+  //get all fieldname and values out of server.args
+  //and write it to the configuration
+  //all based/converted to char*
   char fieldname[TtgConfConfig::maxFieldLen];
   char value[TtgConfConfig::maxValueLen];
   for(int i=0; i<server->args(); i++)
@@ -301,11 +322,17 @@ void TGDevice::serverOnSaveConfig()
       server->arg(i).toCharArray(value,30);
       deviceconfig->setValue(fieldname,value);
     }
+  //re-calculate depending configuration values
   doAfterConfigChange();
+  //create html for for output
   htmlConfig();
+  //send response
   server->send(200, "text/html", outbuffer.getout());
 }
 
+/**
+ * http server write config to EEPROM (/writeconfig)
+ */
 void TGDevice::serverOnWriteConfig()
 {
   TGLogging::get()->write("serverOnWriteConfig")->crlf();
@@ -314,6 +341,10 @@ void TGDevice::serverOnWriteConfig()
   server->send(200, "text/html", outbuffer.getout());
 }
 
+/**
+* private void jsonHeader
+*    default JSON-Header
+*/
 void TGDevice::jsonHeader()
 {
   outbuffer.clear();
@@ -323,22 +354,35 @@ void TGDevice::jsonHeader()
   outbuffer.replace("millis",millis());
 }
 
+/**
+ * http server get config as json (/getconfig)
+ */
 void TGDevice::serverOnGetConfig()
 {
   TGLogging::get()->write("serverOnGetConfig")->crlf();
+  //check is all=Y is set, to send secured configuration values also
   boolean all = false;
   if (server->args() > 0)
     if (server->argName(0) == "all");
       all = server->arg(0) == "Y";
 
+  //create json in outbuffer
   jsonHeader();
   outbuffer.add(", ");
   deviceconfig->json(all,&outbuffer);
   outbuffer.add(" }");
 
+  //send response
   server->send(200, "application/json", outbuffer.getout());
 }
 
+/**
+ * http server put config as json (/getconfig)
+ *   to set configuration values from outside
+ *   for details see TGConfig, thera are some dependancies to consider.
+ *
+ * TODO function is still working with String, but is not called very often
+ */
 void TGDevice::serverOnPutConfig()
 {
   TGLogging::get()->write("serverOnPutConfig")->crlf();
@@ -365,15 +409,24 @@ void TGDevice::serverOnPutConfig()
     server->send(200, "text/plain", "NO DATA");
 }
 
-void TGDevice::jsonSensors(const boolean t_angefordert)
+/**
+* private void jsonSensors
+*    generate json with sensor values
+* @param t_all [all or only to reported]
+*/
+void TGDevice::jsonSensors(const boolean t_all)
 {
   TGLogging::get()->write("jsonSensors")->crlf();
   jsonHeader();
   outbuffer.add(", ");
-  sensors->json(t_angefordert,&outbuffer);
+  sensors->json(t_all,&outbuffer);
   outbuffer.add(" }");
 }
 
+/**
+ * http server onGetValues (/getvalues)
+ *   sensor values as json
+ */
 void TGDevice::serverOnGetValues()
 {
   TGLogging::get()->write("serverOnGetValues")->crlf();
@@ -382,14 +435,23 @@ void TGDevice::serverOnGetValues()
   server->send(200, "application/json", outbuffer.getout());
 }
 
-void TGDevice::jsonActors(const boolean t_angefordert)
+/**
+* private void jsonSensors
+*    generate json with actors status
+* @param t_all [all or only to reported]
+*/
+void TGDevice::jsonActors(const boolean t_all)
 {
   jsonHeader();
   outbuffer.add(", ");
-  actors->json(t_angefordert,&outbuffer);
+  actors->json(t_all,&outbuffer);
   outbuffer.add(" }");
 }
 
+/**
+ * http server onGetActors (/getactors)
+ *   sensor values as json
+ */
 void TGDevice::serverOnGetActors()
 {
   TGLogging::get()->write("serverOnGetActors")->crlf();
@@ -398,8 +460,12 @@ void TGDevice::serverOnGetActors()
 }
 
 /**
+ * http server onSetActors (/setactor)
+ *   set actor value
  *   Syntax
- *   setActor?id=<id>[&status=<status>][%endtime=<endtime>]
+ *   setactor?id=<id>[&status=<status>][%endtime=<endtime>]
+ *
+ *   TODO all is for future use, check wether id is usefull or not
  */
 void TGDevice::serverOnSetActor()
 {
@@ -426,13 +492,17 @@ void TGDevice::serverOnSetActor()
 
 // http JSON Post:
 // https://techtutorialsx.com/2016/07/21/esp8266-post-requests/
+/**
+ * send a http get/post request to Host
+ * @param  url            url data send to
+ * @param  values         optional, with values then use post
+ * @param  t_withresponse get the response
+ * @param  response       char array to store the result
+ * @return                successfull or not (true/false)
+ */
 boolean TGDevice::httpRequest(const char* url, const char* values, const boolean t_withresponse, char* response)
 {
   boolean erg = false;
-
-  TGLogging::get()->write("httpRequest")->crlf();
-  TGLogging::get()->write("host: \"")->write(host)->write("\"")->crlf();
-  TGLogging::get()->write("url: \"")->write(url)->write("\"")->crlf();
 
   if ((strlen(host) == 0) or (strlen(url) == 0))
     return erg;
@@ -441,11 +511,12 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   strcpy(uri,host);
   uri[strlen(host)] = '/'; uri[strlen(host)+1] = '\0';
   strcpy(uri+strlen(host)+1,url);
-  TGLogging::get()->write("Value Request to: \"")->write(uri)->write("\"")->crlf();
+
+  TGLogging::get()->write("httpRequest")->crlf();
+  TGLogging::get()->write("to: \"")->write(uri)->write("\"")->crlf();
+  TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
 
   HTTPClient http;    //Declare object of class HTTPClient
-
-  TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
 
   http.begin(String(uri));   //Specify request destination
   yield();
@@ -484,89 +555,120 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   yield();
 
   http.end();  //Close connection
-
   erg = true;
 
   return erg;
 }
 
+/**
+ * set timer functions active or inactive
+ * @param value [description]
+ */
 void TGDevice::setTimerActive(boolean value)
 {
   timerActive = value;
 }
 
+/**
+ * calculates a timer information via differences of time between two millis()
+ * starttime (on a day) between 0 and 86399s is initialized via server/host
+ *
+ * TODO testing, and implementation the function of the server/host
+ */
 void TGDevice::timer()
 {
+  //if not active then nothing to do
   if (!timerActive)
     return;
 
+  //actual millis()
   int ms = millis();
+  //if first milli(), or after a day or after restartting millis() from zero
+  //get initial value from server/host
   if ((lastTimeMS = -1) or (maintime > 86399) or (lastTimeMS > ms))
     {
       httpRequest(urlgettimesec, "", true, outbuffer.getout());
-      //Fraglich ist was geben ich hier zurück, am einfachsten wären unverpackt die Sekunden, oder halt xml oder noch besser json
+      //TODO which format has the response, only the seconds, or more informations in json
       sscanf(outbuffer.getout(),"%d",&maintime);
       mainTimeMS = maintime * 1000;
     }
-  else
+  else  //calculate as difference to last call
     mainTimeMS += (ms - lastTimeMS);
+  //transform im [s]
   maintime = mainTimeMS / 1000;
+  //store last access
   lastTimeMS = ms;
 }
 
+/**
+ * main device loop
+ * call it from arduino main loop
+ */
 void TGDevice::deviceLoop()
 {
+  //calculate timer
   timer();
 
+  //server does his job
   server->handleClient();
 
+  //if we have sensors
   if ((sensors != NULL) and sensors->hasMembers())
     {
       boolean needReporting = false;
+      //check measure interval
       if (timeTest(lastMessTime,messTime))
         {
           TGLogging::get()->write("deviceLoop: messWerte")->crlf();
+          //read sensor values, needReporting is true if a sensor values changes
+          //rapidly, to report it immediatly
           needReporting = sensors->messWerte();
           lastMessTime = millis();
-
-          //
-          WiFi.printDiag(Serial);
         }
 
-      //Es können ja immer Werte auch ohne Messung in das repotTime Fenster rutschen, also immer prüfen
+      //if the reporting of a sensor value is older reportTime, we have to report again
       needReporting = needReporting or sensors->checkReporting(reportTime);
-      //Wegen der StringVerabeitung sollten wir aber prüfen ob was gesendet werden muss, bevor wir Strings bauen
       if (needReporting)
         {
           TGLogging::get()->write("deviceLoop: reporting")->crlf();
+          //create outbuffer with sensor values
           jsonSensors(false);
-          TGLogging::get()->write("deviceLoop: before httpRequest")->crlf();
-          char response[1024];
-          httpRequest(urlsensordata, outbuffer.getout(), true, response);
+          char response[16];
+          //send the values to server/host
+          httpRequest(urlsensordata, outbuffer.getout(), false, response);
         }
     }
 
+  //if we have actors
   if ((actors != NULL) and actors->hasMembers())
     {
+      //check testing for action intervall
       if (timeTest(lastActorTime,actorTime))
         {
+          //check and doaction in the actors
           boolean needReporting = actors->action();
 
           if (needReporting)
             {
+              //create outbuffer with actor values
               jsonActors(false);
-              httpRequest(urlactordata, outbuffer.getout(), false, NULL);
+              //send actor values to server/host
+              char response[16];
+              httpRequest(urlactordata, outbuffer.getout(), false, response);
             }
         }
     }
 
-  //TGLogging::get()->write("doLoop")->write(loopDelayMS)->crlf();
+  //place for looping functions of derived devices
   doLoop();
 
-  //TGLogging::get()->write("delay");
+  //small loop delay in [ms]
   delay(loopDelayMS);
 }
 
+/**
+ * "abstract" function for individual loop-functions for the derived device
+ */
 void TGDevice::doLoop()
 {
 

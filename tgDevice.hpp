@@ -8,21 +8,21 @@
 *  All examples/systems founds are not object orientated, therefor is
 *  many copy and paste needed by implementing more than one device and/or
 *  they are connected to special servers via special protocolls
-*  In most cases the homeserver do all the managment/controlling of they
-*  the devices. The better way is, that there is decentalized knowledge
+*  In most cases the homeserver do all the managment/controlling of
+*  the devices. The better way is, that there is decentralized knowledge
 *  in each device. Therefore I dont want to use a homeserver system,
 *  (sondern) implementing my own small web based dashboard.
-*  Web-Server and devices are connectd via http in json.
+*  Web-Server and devices are connectd via http / json.
 *
 *  Design
 *  TGDevice main class implemented a base devices including http-server
             for configuration and working with the device
-*  TGConfig automated Handling og configuraion parameters
-*  TGSensor baseclass to mesassure Values
-*  TGActor  baseclass to controll/switch on/off sometging, included timer
+*  TGConfig automated Handling of configuraion parameters
+*  TGSensor baseclass to mesassure values
+*  TGActor  baseclass to controll/switch on/off something, included timer
 *
 *  Copyright Andreas Tengicki 2018, Germany, 64347 Griesheim (tgdevice@tengicki.de)
-*  Licence (richtige suchen, NO COMMERCIAÖ USE)
+*  Licence (richtige suchen, NO COMMERCIAL USE)
 */
 
 #ifndef TGDEVICE_H
@@ -48,50 +48,63 @@
 * * get values from sensors
 * * set actors
 * * automated dashboard/menu via http on the device
+*
+* Description of all private stuff in the .cpp file
 */
 class TGDevice
 {
   public:
+    // constructor, parameter is the version of the configuration
+    //   after each change of the version, the EEPROM stored configuration values are invalid.
     TGDevice(const char* aDeviceVersion);
-    void writelog(const String& s, boolean crLF=true);
+    // give the device a list of sensors
     void registerSensorsList(TtgSensorsList* t_sensors);
+    // give the device a list of sensors
     void registerActorsList(TtgActorsList* t_actor);
+    // setup function, call in main.setup()
     void deviceSetup();
-    virtual void doCalcStatus();
-    boolean httpRequest(const char* url, const char* values, const boolean t_withresponse, char* response);
+    // loop function, call in main.loop()
     void deviceLoop();
+    // to call the http-main-server (device is working without it)
+    boolean httpRequest(const char* url, const char* values, const boolean t_withresponse, char* response);
+    // to calculate actors (untested)
+    virtual void doCalcStatus();
+  //protected function can/should be overwritten by a concret device
+  //         first example is the project HZLogger, for temperatures measurement
   protected:
-    TtgDeviceConfig *deviceconfig;
-    virtual void doHello();
-    void setTimerActive(boolean value=true);
-    virtual void doRegister();
-    virtual void doAfterConfigChange();
-    virtual void doSetup();
-    virtual void doLoop();
-    int maintime = 0;   //[s]  Wir schalten im Garten unabhängig vom Wochentag, d.h. Verwaltung von 00:00:00 bis 23:59:59 reicht, also 0 bis 86399 Sekunden reicht.
-    TtgSensorsList *sensors = NULL;
-    TtgActorsList *actors = NULL;
-    char deviceid[16], wifiSSID[16], wifiPWD[32], host[32];
+    TtgDeviceConfig *deviceconfig;            //points to the configuration
+    virtual void doHello();                   //put a Hello-Message für the (Serial-)Log there
+    void setTimerActive(boolean value=true);  //activate if the device needs time based actions
+    virtual void doRegister();                //register your config values, sensors and actors there
+    virtual void doAfterConfigChange();       //for work you have todo after configuratione changed
+    virtual void doSetup();                   //setup of the derived device, for things not handled by TGDevice
+    virtual void doLoop();                    //loop of the derived device, for things not handled by TGDevice
+    int maintime = 0;                         //[s]  time of the day in seconds, 00:00:00 - 23:59:59 is 0 - 86399,
+                                              //     until now, no weeksdays or dates
+    TtgSensorsList *sensors = NULL;           //list of sensors
+    TtgActorsList *actors = NULL;             //list of actors
+    //TGConfig handles "only" pointers to the configuration values, you need a real storage
+    //the four values are protected, because there where initialized from the derived device
+    char deviceid[16], wifiSSID[16], wifiPWD[32], host[32]; //main configuration values
   private:
-    String logModus = "S"; //"":nix "S":serial "<ip:port>"für Debugging via Netzwerk (später)
+    String logModus = "S";                    //"":no log "S":serial "<ip:port>"logging via ip terminal (later)
     ESP8266WebServer *server = new ESP8266WebServer(80);
     boolean timerActive = false;
-    int lastTimeMS = -1;
-    int mainTimeMS = 0; //[ms] damit die Weiterschaltung in ms funnktioniert, aber
-    int messTime = 60; //[s] 1m
-    int reportTime = 300; //[s] 5m
-    int delTime = 600; //[s] 10m
-    int actorTime = 5; //[s]
-    int lastMessTime = -1, lastActorTime = -1;
-    int loopDelayMS = 50; //[ms] Wie lange der Loop pausiert am Ende
-    char urlgettimesec[32] = {'\0'};
-    char urlsensordata[32] = {'\0'};
-    char urlactordata[32] = {'\0'};
+    int lastTimeMS = -1;                       //[ms] last call millis()
+    int mainTimeMS = 0;                        //[ms] maintime
+    int messTime = 60;                         //[s]  time between measures with sensors
+    int reportTime = 300;                      //[s]  time before a unchanged value is reported
+    int actorTime = 5;                         //[s]
+    int lastMessTime = -1, lastActorTime = -1; //[ms] to detect the interval
+    int loopDelayMS = 50;                      //[ms] Wie lange der Loop pausiert am Ende
+    char urlgettimesec[32] = {'\0'};           //url to get a time from the server/host (future use, format still undefined)
+    char urlsensordata[32] = {'\0'};           //url to send sensor values to the server/host (is working)
+    char urlactordata[32] = {'\0'};            //url to send actor states to the server/host (future use)
     void htmlHeader();
     void htmlFooter();
     void jsonHeader();
-    void jsonSensors(const boolean t_angefordert);
-    void jsonActors(const boolean t_angefordert);
+    void jsonSensors(const boolean t_all);
+    void jsonActors(const boolean t_all);
     void htmlConfig();
     void serverOnDashboard();
     void serverOnConfig();
