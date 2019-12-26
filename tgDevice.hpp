@@ -16,10 +16,13 @@
 *
 *  Design
 *  TGDevice main class implemented a base devices including http-server
-            for configuration and working with the device
+*           for configuration and working with the device
+*
 *  TGConfig automated Handling of configuraion parameters
 *  TGSensor baseclass to mesassure values
 *  TGActor  baseclass to controll/switch on/off something, included timer
+*  TGCharbuffer buffer to build longer output strings, without Strings
+*  TGLogging output to Serial (or TCP-Server later) for debugging
 *
 *  Copyright Andreas Tengicki 2018, Germany, 64347 Griesheim (tgdevice@tengicki.de)
 *  Licence (richtige suchen, NO COMMERCIAL USE)
@@ -72,7 +75,7 @@ class TGDevice
   //protected function can/should be overwritten by a concret device
   //         first example is the project HZLogger, for temperatures measurement
   protected:
-    TtgDeviceConfig *deviceconfig;            //points to the configuration
+    TGDeviceConfig *deviceconfig;            //points to the configuration
     virtual void doHello();                   //put a Hello-Message für the (Serial-)Log there
     void setTimerActive(boolean value=true);  //activate if the device needs time based actions
     virtual void doRegister();                //register your config values, sensors and actors there

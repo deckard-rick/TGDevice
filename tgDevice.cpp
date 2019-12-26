@@ -3,7 +3,6 @@
 *
 * lesson learned:
 * 1) use yield, because not to run into the internal watchdog exception
-*
 * 2) char* instead of String
 *
 * class TGDevice
@@ -54,7 +53,7 @@ bool timeTest(int checkTime, int sec)
 */
 TGDevice::TGDevice(const char* t_deviceversion)
 {
-  deviceconfig = new TtgDeviceConfig(t_deviceversion);
+  deviceconfig = new TGDeviceConfig(t_deviceversion);
 }
 
 /**
@@ -314,8 +313,8 @@ void TGDevice::serverOnSaveConfig()
   //get all fieldname and values out of server.args
   //and write it to the configuration
   //all based/converted to char*
-  char fieldname[TtgConfConfig::maxFieldLen];
-  char value[TtgConfConfig::maxValueLen];
+  char fieldname[TGConfConfig::maxFieldLen];
+  char value[TGConfConfig::maxValueLen];
   for(int i=0; i<server->args(); i++)
     {
       server->argName(i).toCharArray(fieldname,30);
