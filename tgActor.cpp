@@ -12,15 +12,15 @@ char htmlActor5[] = "</table>";
 char jsonActors1[] = "\"A#i#\" : {\"id\" : \"#id#\", \"status\" : \"#status#\", ";
 char jsonActors2[] = "\"autostart\" : \"#autostart#\", \"autoend\" : \"#autoend#\", \"endtime\" : \"#endtime#\"}";
 
-int TtgActor::setAutoTimes(int t_start, int t_time)
+int TGActor::setAutoTimes(int t_start, int t_time)
 {
   autoStart = t_start;
-  autoEnd = autoStart + t_start;
+  autoEnd = autoStart + t_time;
   if (autoEnd >= 86400) autoEnd = 86399; //wir gehen noch nicht über Mitternacht drüber
   return autoEnd;
 }
 
-void TtgActor::doCalcStatus()
+void TGActor::doCalcStatus()
 {
   if ((status == 'A') or (status == 'F')) //autoModus
     {
@@ -29,7 +29,7 @@ void TtgActor::doCalcStatus()
     }
 }
 
-void TtgActor::setStatus(char t_status)
+void TGActor::setStatus(char t_status)
 {
   if (status != t_status)
     {
@@ -38,7 +38,7 @@ void TtgActor::setStatus(char t_status)
     }
 }
 
-void TtgActor::action()
+void TGActor::action()
 {
   if (changed)
     if ((status == 'Y') or (status == 'A'))
@@ -49,27 +49,27 @@ void TtgActor::action()
       doAction();
 }
 
-void TtgActor::doActivate()
+void TGActor::doActivate()
 {
 
 }
 
-void TtgActor::doDeactivate()
+void TGActor::doDeactivate()
 {
 
 }
 
-void TtgActor::doAction()
+void TGActor::doAction()
 {
 
 }
 
-boolean TtgActorsList::hasMembers()
+boolean TGActorsList::hasMembers()
 {
   return firstelement != NULL;
 }
 
-TtgActor* TtgActorsList::add(TtgActor* t_value)
+TGActor* TGActorsList::add(TGActor* t_value)
 {
   if (firstelement == NULL)
     {
@@ -84,16 +84,16 @@ TtgActor* TtgActorsList::add(TtgActor* t_value)
   return t_value;
 }
 
-boolean TtgActorsList::action()
+boolean TGActorsList::action()
 {
   boolean needReporting = false;
 
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     element->doCalcStatus();
 
   doCalcStatus();
 
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     {
       element->action();
       needReporting = needReporting or element->changed;
@@ -102,13 +102,13 @@ boolean TtgActorsList::action()
   return needReporting;
 }
 
-void TtgActorsList::doCalcStatus()
+void TGActorsList::doCalcStatus()
 {
 }
 
-void TtgActorsList::setStatus(char* t_id, char t_status)
+void TGActorsList::setStatus(char* t_id, char t_status)
 {
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     if (strcmp(element->id,t_id) == 0)
       {
         element->setStatus(t_status);
@@ -116,21 +116,21 @@ void TtgActorsList::setStatus(char* t_id, char t_status)
       }
 }
 
-void TtgActorsList::setEndtime(char* t_id, int t_endtime)
+void TGActorsList::setEndtime(char* t_id, int t_endtime)
 {
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     if (strcmp(element->id,t_id) == 0)
       element->endTime = t_endtime;  //activation via automatic timer (max after actionTime [s]
 }
 
-void TtgActorsList::json(boolean t_angefordert, TGCharbuffer* outbuffer)
+void TGActorsList::json(boolean t_angefordert, TGCharbuffer* outbuffer)
 {
   outbuffer->add("\"actors\" : { ");
 
   char cbuf[10];
   boolean first = true;
   int i = 0;
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     if (t_angefordert or element->changed)
       {
         if (!first)
@@ -154,12 +154,12 @@ void TtgActorsList::json(boolean t_angefordert, TGCharbuffer* outbuffer)
   outbuffer->add("}");
 }
 
-void TtgActorsList::html(TGCharbuffer* outbuffer)
+void TGActorsList::html(TGCharbuffer* outbuffer)
 {
   outbuffer->add(htmlActor1) ; String html = "<table>";
   int f_endtime = (millis() / 1000) + 600;
 
-  for (TtgActor *element = firstelement; element != NULL; element = element->next)
+  for (TGActor *element = firstelement; element != NULL; element = element->next)
     {
       int index = 1;
       switch (element->status)

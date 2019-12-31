@@ -1,38 +1,72 @@
+/**
+*  Projekt TGDevice (Baseclasses/Framework for Arduino ESP8622 devices)
+*
+*  Design
+*  TGActor  baseclass to controll/switch on/off something, included timer
+*
+*  TGDevice main class implemented a base devices including http-server
+            for configuration and working with the device
+*  TGConfig automated Handling of configuraion parameters
+*  TGSensor baseclass to mesassure values
+*  TGCharbuffer buffer to build longer output strings, without Strings
+*  TGLogging output to Serial (or TCP-Server later) for debugging
+*
+*  TGActor
+*    TODO untested, first device with actors has to be build
+*    controllinng an actor via time automatic, or setting by
+*    a function of the device
+*
+*  Copyright Andreas Tengicki 2018, Germany, 64347 Griesheim (tgdevice@tengicki.de)
+*  Licence (richtige suchen, NO COMMERCIAL USE)
+*/
+
 #ifndef TGACTOR_H
 #define TGACTOR_H
 
 #include <Arduino.h>
 #include <tgCharbuffer.hpp>
 
-class TtgActor
+/**
+ * represents an actor
+ * @param t_id       id of the actor
+ * @param t_maintime *pointer* to the maintime
+ */
+class TGActor
 {
   public:
-    TtgActor(const char* t_id, int *t_maintime)
+    //constructor
+    TGActor(const char* t_id, int *t_maintime)
       { strcpy(id,t_id);  maintime = t_maintime;};
+    //set time for automatic
     int setAutoTimes(int t_start, int t_time);
-    char id[32];
-    char status='N';  //Y on, O autoON, F autoOFF, N off
-    boolean changed = false;
-    int autoStart = 0;
-    int autoEnd = 0;
-    int endTime = 0;
-    TtgActor* next = NULL;
-    void action();
-    virtual void doCalcStatus();
-    void setStatus(char t_status);
+    //public attributes for easy access
+    char id[32];              //id of the actor
+    char status='N';          //Y on, O autoON, F autoOFF, N off
+    boolean changed = false;  //status has changed
+    int autoStart = 0;        //time[s] activating each day
+    int autoEnd = 0;          //time[s] deactivating each day
+    int endTime = 0;          //time to deactivate
+    TGActor* next = NULL;    //link to the next action
+    void action();            //make action if changed
+    virtual void doCalcStatus();   //calculate new status
+    void setStatus(char t_status); //set status from extern
   protected:
-    virtual void doAction();
+    virtual void doAction();       //for derived actor todo the action
     virtual void doActivate();
     virtual void doDeactivate();
   private:
-    int *maintime;
+    int *maintime;            //pointer to maintime
 };
 
-class TtgActorsList
+/**
+ * List with actors
+ * @return self
+ */
+class TGActorsList
 {
   public:
     boolean hasMembers();
-    TtgActor* add(TtgActor *t_value);
+    TGActor* add(TGActor *t_value);
     boolean action();
     void json(const boolean t_angefordert, TGCharbuffer* outbuffer);
     void setStatus(char* t_id, char t_status);
@@ -41,7 +75,7 @@ class TtgActorsList
   protected:
     virtual void doCalcStatus();
   private:
-    TtgActor *firstelement=NULL, *lastelement=NULL;
+    TGActor *firstelement=NULL, *lastelement=NULL;
 };
 
 #endif

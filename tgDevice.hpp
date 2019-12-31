@@ -63,7 +63,7 @@ class TGDevice
     // give the device a list of sensors
     void registerSensorsList(TtgSensorsList* t_sensors);
     // give the device a list of sensors
-    void registerActorsList(TtgActorsList* t_actor);
+    void registerActorsList(TGActorsList* t_actor);
     // setup function, call in main.setup()
     void deviceSetup();
     // loop function, call in main.loop()
@@ -85,7 +85,7 @@ class TGDevice
     int maintime = 0;                         //[s]  time of the day in seconds, 00:00:00 - 23:59:59 is 0 - 86399,
                                               //     until now, no weeksdays or dates
     TtgSensorsList *sensors = NULL;           //list of sensors
-    TtgActorsList *actors = NULL;             //list of actors
+    TGActorsList *actors = NULL;             //list of actors
     //TGConfig handles "only" pointers to the configuration values, you need a real storage
     //the four values are protected, because there where initialized from the derived device
     char deviceid[16], wifiSSID[16], wifiPWD[32], host[32]; //main configuration values
@@ -103,7 +103,7 @@ class TGDevice
     char urlgettimesec[32] = {'\0'};           //url to get a time from the server/host (future use, format still undefined)
     char urlsensordata[32] = {'\0'};           //url to send sensor values to the server/host (is working)
     char urlactordata[32] = {'\0'};            //url to send actor states to the server/host (future use)
-    void htmlHeader();
+    void htmlHeader(int reload = 0);
     void htmlFooter();
     void jsonHeader();
     void jsonSensors(const boolean t_all);

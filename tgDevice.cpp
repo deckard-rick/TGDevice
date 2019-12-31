@@ -15,7 +15,9 @@
 #include <tgLogging.hpp>
 
 /*Constants to create the header and footer of all html pages*/
-char htmlHeader1[] = "<html><body><h1>Device ID:#deviceid# Version(#deviceversion#)</h1>";
+char htmlHeader1[] = "<html><head>";
+char htmlHeader2[] = "<body><meta http-equiv=\"refresh\" content=\"#sec#\">";
+char htmlHeader3[] = "</head><body><h1>Device ID:#deviceid# Version(#deviceversion#)</h1>";
 char htmlFooter1[] = "<p>[<a href=\"/\">Main</a>]</br>[<a href=\"/config\">Configuration</a>][<a href=\"/getconfig\">Configuration (json)</a>]";
 char htmlFooter2[] = "[<a href=\"/getvalues\">Values (json)</a>]";
 char htmlFooter3[] = "[<a href=\"/getactors\">Actors (json)</a>]";
@@ -73,7 +75,7 @@ void TGDevice::registerSensorsList(TtgSensorsList* t_sensors)
 *
 * registered the list of actors, by this it is possible to use derived classes
 */
-void TGDevice::registerActorsList(TtgActorsList* t_actors)
+void TGDevice::registerActorsList(TGActorsList* t_actors)
 {
   actors = t_actors;
 }
@@ -244,10 +246,16 @@ void TGDevice::doSetup()
 * private void htmlHeader
 *    default HTML-Header
 */
-void TGDevice::htmlHeader()
+void TGDevice::htmlHeader(int reload)
 {
   outbuffer.clear();
   outbuffer.add(htmlHeader1);
+  if (reload > 0)
+    {
+      outbuffer.add(htmlHeader2);
+      outbuffer.replace("sec",reload);
+    }
+  outbuffer.add(htmlHeader3);
   outbuffer.replace("deviceid",deviceid);
   outbuffer.replace("deviceversion",deviceconfig->deviceversion);
 }
@@ -274,7 +282,7 @@ void TGDevice::htmlFooter()
  */
 void TGDevice::serverOnDashboard()
 {
-  htmlHeader();
+  htmlHeader(messTime);
   outbuffer.add(htmlDashboard);
   if (sensors != NULL)
     sensors->html(&outbuffer);

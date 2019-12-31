@@ -41,7 +41,8 @@ void TGCharbuffer::replace(const char* id, const int ivalue)
 void TGCharbuffer::replace(const char* id, const float fvalue)
 {
   char value[20];
-  sprintf(value,"%7.2f",fvalue);
+  sprintf(value,"%7.2f",fvalue); //' is for thousand seperator BUT DOES NOT WORK'
+  //TODO thousand seperator, but need to do it, by my own
   replace(id,value);
 }
 

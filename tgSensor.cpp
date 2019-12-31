@@ -1,13 +1,17 @@
 #include <tgSensor.hpp>
 #include <tgLogging.hpp>
 
-char htmlSensor1[] = "<table border=\"1\"><tr><th>ID</th>";
-char htmlSensor2[] = "<th>#id#</th>";
-char htmlSensor3[] = "</tr><tr><td>Value</td>";
-char htmlSensor4[] = "<td>#value#</td>";
-char htmlSensor5[] = "</tr><tr><td>[s]</td>";
-char htmlSensor6[] = "<td><small>#sec#</small></td>";
-char htmlSensor7[] = "</tr></table>";
+char htmlHSensor1[] = "<table border=\"1\"><tr><th>ID</th>";
+char htmlHSensor2[] = "<th>#id#</th>";
+char htmlHSensor3[] = "</tr><tr><td>Value</td>";
+char htmlHSensor4[] = "<td>#value#</td>";
+char htmlHSensor5[] = "</tr><tr><td>[s]</td>";
+char htmlHSensor6[] = "<td><small>#sec#</small></td>";
+char htmlHSensor7[] = "</tr></table>";
+
+char htmlVSensor1[] = "<table border=\"1\"><tr><th>ID</th><th>Value</th><th>[s]</th></tr>";
+char htmlVSensor2[] = "<tr><td>#id#</td><td>#value#</td><td><small>#sec#</small></td></tr>";
+char htmlVSensor3[] = "</table>";
 
 char jsonSensors1[] = "\"S#i#\" : {\"id\" : \"#id#\",";
 char jsonSensors2[] = "\"sec\" : \"#sec#\", \"value\" : \"#value#\"} ";
@@ -112,35 +116,56 @@ void TtgSensorsList::json(const boolean t_angefordert, TGCharbuffer* outbuffer)
 
   outbuffer->add("}");
 }
-
 void TtgSensorsList::html(TGCharbuffer* outbuffer)
 {
-  outbuffer->add(htmlSensor1);
+  htmlV(outbuffer);
+}
+
+void TtgSensorsList::htmlH(TGCharbuffer* outbuffer)
+{
+  outbuffer->add(htmlHSensor1);
 
   int now = millis();
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
-       outbuffer->add(htmlSensor2);
+       outbuffer->add(htmlHSensor2);
        outbuffer->replace("id",element->id);
        yield();
     }
 
-  outbuffer->add(htmlSensor3);
+  outbuffer->add(htmlHSensor3);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
-    outbuffer->add(htmlSensor4);
+    outbuffer->add(htmlHSensor4);
     outbuffer->replace("value",element->value);
     yield();
    }
 
-  outbuffer->add(htmlSensor5);
+  outbuffer->add(htmlHSensor5);
   for (TtgSensor *element = firstelement; element != NULL; element = element->next)
     {
       int sec = (now - element->messTime) / 1000;
-      outbuffer->add(htmlSensor6);
+      outbuffer->add(htmlHSensor6);
       outbuffer->replace("sec",sec);
       yield();
     }
 
-  outbuffer->add(htmlSensor7);
+  outbuffer->add(htmlHSensor7);
+}
+
+void TtgSensorsList::htmlV(TGCharbuffer* outbuffer)
+{
+  outbuffer->add(htmlVSensor1);
+
+  for (TtgSensor *element = firstelement; element != NULL; element = element->next)
+    {
+       outbuffer->add(htmlVSensor2);
+       outbuffer->replace("id",element->id);
+       outbuffer->replace("value",element->value);
+       int now = millis();
+       int sec = (now - element->messTime) / 1000;
+       outbuffer->replace("sec",sec);
+       yield();
+    }
+  outbuffer->add(htmlVSensor3);
 }

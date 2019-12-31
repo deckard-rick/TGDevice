@@ -35,6 +35,8 @@ class TtgSensorsList
     virtual void html(TGCharbuffer* outbuffer);
   private:
     TtgSensor *firstelement=NULL, *lastelement=NULL;
+    virtual void htmlH(TGCharbuffer* outbuffer);
+    virtual void htmlV(TGCharbuffer* outbuffer);
 };
 
 #endif
