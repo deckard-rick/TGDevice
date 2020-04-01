@@ -1,8 +1,29 @@
+/**
+*  Projekt TGDevice (Baseclasses/Framework for Arduino ESP8622 devices)
+*
+*  TGCharbuffer buffer to build longer output strings, without Strings
+*
+*  Copyright Andreas Tengicki 2018, Germany, 64347 Griesheim (tgdevice@tengicki.de)
+*  Licence CC-BY-NC-SA 4.0, NO COMMERCIAL USE
+*  see also: https://creativecommons.org/licenses/by-nc-sa/4.0/
+*/
 
 #include <tgCharbuffer.hpp>
 #include <tgLogging.hpp>
 #include <Arduino.h>
 
+/**
+ * public access to the buffer
+ * @return the buffer
+ */
+char* TGCharbuffer::get()
+{
+  return outbuffer;
+}
+
+/**
+ * clears the buffer, after this it is empty
+ */
 void TGCharbuffer::clear()
 {
   outpos = 0;
@@ -10,6 +31,10 @@ void TGCharbuffer::clear()
   outbuffer[0] = '\0';
 }
 
+/**
+ * adds a null terminted string the the buffer
+ * @param value string to add
+ */
 void TGCharbuffer::add(const char* value)
 {
   if (outpos+strlen(value) >= TGCharbuffer::maxOutBuffer)
@@ -19,11 +44,14 @@ void TGCharbuffer::add(const char* value)
       strcpy(outbuffer+outpos,value);
       replacepos = outpos;
       outpos += strlen(value);
-      //TGLogging::get()->write("TGCharbuffer::add(")->write(outpos)->write("):")->crlf();
-      //TGLogging::get()->write(outbuffer)->crlf();
     }
 }
 
+/**
+ * replace field #id# with value
+ * @param id     field id
+ * @param ivalue long unsigned int value
+ */
 void TGCharbuffer::replace(const char* id, const long unsigned int ivalue)
 {
   char value[20];
@@ -31,6 +59,11 @@ void TGCharbuffer::replace(const char* id, const long unsigned int ivalue)
   replace(id,value);
 }
 
+/**
+ * replace field #id# with value
+ * @param id     field id
+ * @param ivalue int value
+ */
 void TGCharbuffer::replace(const char* id, const int ivalue)
 {
   char value[20];
@@ -38,25 +71,35 @@ void TGCharbuffer::replace(const char* id, const int ivalue)
   replace(id,value);
 }
 
+/**
+ * replace field #id# with value
+ * @param id     field id
+ * @param fvalue float value
+ */
 void TGCharbuffer::replace(const char* id, const float fvalue)
 {
   char value[20];
-  sprintf(value,"%7.2f",fvalue);
+  sprintf(value,"%7.2f",fvalue); //' is for thousand seperator BUT DOES NOT WORK'
+  //TODO thousand seperator, but need to do it, by my own
   replace(id,value);
 }
 
+/**
+ * replace field #id# with value
+ * @param id     field id
+ * @param value nullterminated string value
+ */
 void TGCharbuffer::replace(const char* id, const char* value)
 {
   int modus = 0;
   int lpos = 0; int rpos = 0;
 
-  //führende Spaces weg
+  //delete leading spaces
   int solllen = strlen(value);
   int valStart=0;
   while ((valStart < solllen) and (value[valStart] == ' ')) ++valStart;
   solllen -= valStart;
 
-  //TGLogging::get()->write("replacePos:")->write(replacepos)->crlf();
   for(int i=replacepos; i < strlen(outbuffer); ++i)
     {
       if ((modus == 0) and (outbuffer[i] =='#')) //looking for starting #
@@ -75,7 +118,7 @@ void TGCharbuffer::replace(const char* id, const char* value)
           bool error = false;
           if (solllen < istlen)
             {
-              //Zum linken # (Pos lpos) wird vorgezogen.
+              //to the left # (pos lpos) shift left
               strcpy(outbuffer+lpos, outbuffer+lpos+(istlen-solllen));
               outpos -= istlen-solllen;
             }
@@ -103,9 +146,4 @@ void TGCharbuffer::replace(const char* id, const char* value)
       else if ((modus == 2) and (outbuffer[i] == '#'))
         modus = 0;
     }
-}
-
-char* TGCharbuffer::getout()
-{
-  return outbuffer;
 }
