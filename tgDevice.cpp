@@ -15,12 +15,10 @@
 #include <tgDevice.hpp>
 #include <tgLogging.hpp>
 
-#include <tgDebug.hpp>
-
 /*Constants to create the header and footer of all html pages*/
 char htmlHeader1[] = "<html><head>";
 char htmlHeader2[] = "<body><meta http-equiv=\"refresh\" content=\"#sec#\">";
-char htmlHeader3[] = "</head><body><h1>#deviceid#</h1>";
+char htmlHeader3[] = "</head><body><h1>Device ID:#deviceid# Version(#deviceversion#)</h1>";
 char htmlFooter1[] = "<p>[<a href=\"/\">Main</a>]</br>[<a href=\"/config\">Configuration</a>][<a href=\"/getconfig\">Configuration (json)</a>]";
 char htmlFooter2[] = "[<a href=\"/getvalues\">Values (json)</a>]";
 char htmlFooter3[] = "[<a href=\"/getactors\">Actors (json)</a>]";
@@ -133,30 +131,20 @@ void TGDevice::deviceSetup()
   //if connected activate auto-re-connect
   if (WiFi.status() == WL_CONNECTED)
     {
-      //WiFi.setAutoReconnect(true); //damit er den erfolgreichen Aufbau wiederholt.
-      /* reconnect seems not to work */
+      WiFi.setAutoReconnect(true); //damit er den erfolgreichen Aufbau wiederholt.
       TGLogging::get()->write("WiFi connected IP:")->write(WiFi.localIP().toString())->crlf();
-      wifiClientMode = true;
-      //WiFi.disconnect();
     }
   else //if not connected, start as WiFi-access-point on default IP 192.168.4.1
     {
       TGLogging::get()->write("WiFi NOT connected")->crlf();
       //stopping reconnecting of client mode, it makes trouble
-      //WiFi.setAutoReconnect(false);
-      //see above
-      wifiClientMode = false;
+      WiFi.setAutoReconnect(false);
       //starting server
       if (WiFi.softAP("tgDevice001","11223344"))
         TGLogging::get()->write("WiFi tgDevice001 startet IP:")->write(WiFi.softAPIP().toString())->crlf();
       else //if not successfull write log
         TGLogging::get()->write("Wifi access point NOT started.")->crlf();
     }
-
-  httpOK = 0;
-  httpERROR = 0;
-  httpSeqOK = 0;
-  httpSeqERROR = 0;
 
   //initialize http-Server
   TGLogging::get()->write("init Server")->crlf();
@@ -361,8 +349,7 @@ void TGDevice::serverOnSaveConfig()
   //create html for for output
   htmlConfig();
   //send response
-  server->send(200, "text/html", outbuffer.get());
-  TGLogging::get()->write("end")->crlf();
+  server->send(200, "text/html", outbuffer.getout());
 }
 
 /**
@@ -409,8 +396,7 @@ void TGDevice::serverOnGetConfig()
   outbuffer.add(" }");
 
   //send response
-  server->send(200, "application/json", outbuffer.get());
-  TGLogging::get()->write("end")->crlf();
+  server->send(200, "application/json", outbuffer.getout());
 }
 
 /**
@@ -440,11 +426,10 @@ void TGDevice::serverOnPutConfig()
       deviceconfig->json(false,&outbuffer);
       outbuffer.add(" }");
 
-      server->send(200, "application/json", outbuffer.get());
+      server->send(200, "application/json", outbuffer.getout());
     }
   else
     server->send(200, "text/plain", "NO DATA");
-  TGLogging::get()->write("end")->crlf();
 }
 
 /**
@@ -549,57 +534,55 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   if ((strlen(host) == 0) or (strlen(url) == 0))
     return erg;
 
-  if (WiFi.status() != WL_CONNECTED)
-    return erg;
+  char uri[128] = "";
+  strcpy(uri,host);
+  uri[strlen(host)] = '/'; uri[strlen(host)+1] = '\0';
+  strcpy(uri+strlen(host)+1,url);
 
-  //try
-  //try catch ist deaktiviert, muss ich im Arduino erst freischalten
+  TGLogging::get()->write("httpRequest")->crlf();
+  TGLogging::get()->write("to: \"")->write(uri)->write("\"")->crlf();
+  TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
+
+  HTTPClient http;    //Declare object of class HTTPClient
+
+  http.begin(String(uri));   //Specify request destination
+  yield();
+
+  int httpCode = 0;
+  if (strlen(values) == 0)
+    httpCode = http.GET();
+  else
     {
-      char uri[128] = "";
-      strcpy(uri,host);
-      uri[strlen(host)] = '/'; uri[strlen(host)+1] = '\0';
-      strcpy(uri+strlen(host)+1,url);
+      TGLogging::get()->write("POST")->crlf();
+      http.addHeader("Content-Type", "application/json");  //Specify content-type header
+      httpCode = http.POST(String(values));
+    }
+  yield();
 
-      WiFiClient client;
-      HTTPClient http;    //Declare object of class HTTPClient
+  TGLogging::get()->write("httpCode:")->write(httpCode)->crlf();
+  if (httpCode < 0)
+    TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http.errorToString(httpCode))->crlf();
+  yield();
 
-      http.begin(client,String(uri));   //Specify request destination
-
-      int httpCode = 0;
-      if (strlen(values) == 0)
-        httpCode = http.GET();
-      else
+  if (t_withresponse and (httpCode >= 0))
+    {
+      //response = http->getString();          //Get the response payload
+      //  getString is working with A StringStream and need to much resorves,
+      // we can get the answert directly from the stream
+      int i = 0;
+      WiFiClient* stream = http.getStreamPtr();
+      while(stream->available() > 0)
         {
           http.addHeader("Content-Type", "application/json");  //Specify content-type header
           httpCode = http.POST(String(values));
         }
-
-      if (httpCode > 0)
-        {
-          // HTTP header has been send and Server response header has been handled
-          // file found at server
-          if (httpCode == HTTP_CODE_OK)
-            {
-              const String& payload = http.getString();
-              httpOK++;
-              httpSeqOK++;
-              httpSeqERROR = 0;
-              TGLogging::get()->write("http OK cnt:")->write(httpOK)->write(" seq:")->write(httpSeqOK)->write(" ")->write((httpOK/(httpOK+httpERROR)*100))->write("%")->crlf();
-            }
-        }
-      else
-        {
-          httpERROR++;
-          httpSeqERROR++;
-          httpSeqOK = 0;
-          TGLogging::get()->write("http ERROR cnt:")->write(httpERROR)->write(" seq:")->write(httpSeqERROR)->write(" ")->write((httpERROR/(httpOK+httpERROR))*100)->write("%")->crlf();
-          erg = false;
-        }
-
-      //http.end();  //Close connection  TGMARK
-      //TGDebug::get()->closeLevel(0,"TGDevice::httpRequest");
-      return erg;
+      *(response+i) = '\0';
+      TGLogging::get()->write("response:")->write(response)->crlf();
     }
+  yield();
+
+  http.end();  //Close connection
+  erg = true;
 
   return erg;
 }
@@ -631,9 +614,9 @@ void TGDevice::timer()
   //get initial value from server/host
   if ((lastTimeMS = -1) or (maintime > 86399) or (lastTimeMS > ms))
     {
-      httpRequest(urlgettimesec, "", true, outbuffer.get());
+      httpRequest(urlgettimesec, "", true, outbuffer.getout());
       //TODO which format has the response, only the seconds, or more informations in json
-      sscanf(outbuffer.get(),"%d",&maintime);
+      sscanf(outbuffer.getout(),"%d",&maintime);
       mainTimeMS = maintime * 1000;
     }
   else  //calculate as difference to last call
