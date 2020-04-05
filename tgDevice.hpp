@@ -104,6 +104,7 @@ class TGDevice
     char urlgettimesec[32] = {'\0'};           //url to get a time from the server/host (future use, format still undefined)
     char urlsensordata[32] = {'\0'};           //url to send sensor values to the server/host (is working)
     char urlactordata[32] = {'\0'};            //url to send actor states to the server/host (future use)
+    int httpOK,httpSeqOK,httpERROR,httpSeqERROR;
     void htmlHeader(int reload = 0);
     void htmlFooter();
     void jsonHeader();

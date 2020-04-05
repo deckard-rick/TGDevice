@@ -109,6 +109,7 @@ void TGDevice::deviceSetup()
   //calculation in the configuration after changed, for example timetables
   doAfterConfigChange();
 
+  httpOK = 0; httpSeqOK = 0; httpERROR = 0; httpSeqERROR = 0;
   //establish WiFi connection
   TGLogging::get()->write("WiFi connect to: ")->write(wifiSSID);
   int endtime = millis() + 30000;
@@ -349,7 +350,7 @@ void TGDevice::serverOnSaveConfig()
   //create html for for output
   htmlConfig();
   //send response
-  server->send(200, "text/html", outbuffer.getout());
+  server->send(200, "text/html", outbuffer.get());
 }
 
 /**
@@ -396,7 +397,7 @@ void TGDevice::serverOnGetConfig()
   outbuffer.add(" }");
 
   //send response
-  server->send(200, "application/json", outbuffer.getout());
+  server->send(200, "application/json", outbuffer.get());
 }
 
 /**
@@ -426,7 +427,7 @@ void TGDevice::serverOnPutConfig()
       deviceconfig->json(false,&outbuffer);
       outbuffer.add(" }");
 
-      server->send(200, "application/json", outbuffer.getout());
+      server->send(200, "application/json", outbuffer.get());
     }
   else
     server->send(200, "text/plain", "NO DATA");
@@ -556,13 +557,20 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
       TGLogging::get()->write("POST")->crlf();
       http.addHeader("Content-Type", "application/json");  //Specify content-type header
       httpCode = http.POST(String(values));
+      httpOK++;
+      httpSeqOK++;
+      httpSeqERROR = 0;
     }
   yield();
 
   TGLogging::get()->write("httpCode:")->write(httpCode)->crlf();
   if (httpCode < 0)
-    TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http.errorToString(httpCode))->crlf();
-  yield();
+    {
+      TGLogging::get()->write("[HTTP] ... failed, error: ")->write(http.errorToString(httpCode))->crlf();
+      httpERROR++;
+      httpSeqERROR++;
+      httpSeqOK = 0;
+    }
 
   if (t_withresponse and (httpCode >= 0))
     {
@@ -614,9 +622,9 @@ void TGDevice::timer()
   //get initial value from server/host
   if ((lastTimeMS = -1) or (maintime > 86399) or (lastTimeMS > ms))
     {
-      httpRequest(urlgettimesec, "", true, outbuffer.getout());
+      httpRequest(urlgettimesec, "", true, outbuffer.get());
       //TODO which format has the response, only the seconds, or more informations in json
-      sscanf(outbuffer.getout(),"%d",&maintime);
+      sscanf(outbuffer.get(),"%d",&maintime);
       mainTimeMS = maintime * 1000;
     }
   else  //calculate as difference to last call
