@@ -14,6 +14,7 @@
 
 #include <tgDevice.hpp>
 #include <tgLogging.hpp>
+#include <WiFiClient.h>
 
 /*Constants to create the header and footer of all html pages*/
 char htmlHeader1[] = "<html><head>";
@@ -545,8 +546,9 @@ boolean TGDevice::httpRequest(const char* url, const char* values, const boolean
   TGLogging::get()->write("Values: \"")->write(values)->write("\"")->crlf();
 
   HTTPClient http;    //Declare object of class HTTPClient
+  WiFiClient wifiClient;
 
-  http.begin(String(uri));   //Specify request destination
+  http.begin(wifiClient,String(uri));   //Specify request destination
   yield();
 
   int httpCode = 0;
