@@ -36,6 +36,7 @@ class TGCharbuffer
      * @param value string to add, null terminated
      */
     void add(const char* value);
+    void add(const int ivalue);
     /**
      * look only in the last added part for #id# and replace with value
      * @param id    field to look for

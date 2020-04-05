@@ -113,6 +113,7 @@ TGLogging* TGLogging::crlf()
   return this;
 }
 
+/**
 TGLogging* TGLogging::writeState(const int state)
 {
   if (state == 0) write("CLOSED");
@@ -129,3 +130,4 @@ TGLogging* TGLogging::writeState(const int state)
   else write("UNKNOWN:")->write(state);
   return this;
 }
+*/

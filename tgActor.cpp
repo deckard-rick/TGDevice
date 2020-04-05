@@ -1,7 +1,7 @@
 #include <tgActor.hpp>
 
-char* actorStatus[] = {"Y","N","A","F"};
-char* actorColor[] = {"green","red","lightgreen","lightred"};
+const char* actorStatus[] = {"Y","N","A","F"};
+const char* actorColor[] = {"green","red","lightgreen","lightred"};
 
 const char htmlActor1[] = "<table>";
 char htmlActor2[] = "<tr><th><button style=\"color=#color#\">#id#</button>";  //action = id=element->&status=f_status

@@ -47,6 +47,13 @@ void TGCharbuffer::add(const char* value)
     }
 }
 
+void TGCharbuffer::add(const int ivalue)
+{
+  char value[20];
+  sprintf(value,"%d",ivalue);
+  add(value);
+}
+
 /**
  * replace field #id# with value
  * @param id     field id

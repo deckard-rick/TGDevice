@@ -54,7 +54,7 @@ class TGLogging
     TGLogging* write(const int value);
     TGLogging* write(const float value);
     TGLogging* write(const String& value);
-    TGLogging* writeState(const int state);
+    //TGLogging* writeState(const int state);
     /**
      * output of a CR/LF
      * @return     logging object for concatination
